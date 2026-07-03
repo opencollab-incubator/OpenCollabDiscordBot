@@ -1,7 +1,7 @@
 <component name="CopyrightManager">
   <settings>
     <module2copyright>
-      <element module="Source" copyright="GeyserDiscordBot" />
+      <element module="Source" copyright="OpenCollabDiscordBot" />
     </module2copyright>
   </settings>
 </component>

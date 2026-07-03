@@ -26,8 +26,10 @@
 package org.geysermc.discordbot.storage;
 
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.Channel;
+import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.ForumChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.NewsChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -301,5 +303,101 @@ public class ServerSettings {
             return null;
         }
         return guild.getTextChannelById(channel);
+    }
+
+    public static List<Category> getTicketCategories(@NotNull Guild guild) throws IllegalArgumentException {
+        String rawCategories = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "ticket-categories");
+        if (rawCategories == null || rawCategories.isEmpty()) return List.of();
+
+        List<Category> categories = new ArrayList<>();
+        for (String category : rawCategories.split(",")) {
+            if (category.isEmpty()) continue;
+
+            Category c = guild.getCategoryById(category);
+            if (c == null) continue;
+
+            categories.add(c);
+        }
+
+        return categories;
+    }
+
+    public static List<Role> getTicketAllowedRoles(@NotNull Guild guild) throws IllegalArgumentException {
+        String rawRoles = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "ticket-allowed-roles");
+        if (rawRoles == null || rawRoles.isEmpty()) return List.of();
+
+        List<Role> roles = new ArrayList<>();
+        for (String role : rawRoles.split(",")) {
+            if (role.isEmpty()) continue;
+
+            Role r = guild.getRoleById(role);
+            if (r == null) continue;
+
+            roles.add(r);
+        }
+
+        return roles;
+    }
+
+    public static boolean isTicketArchiving(@NotNull Guild guild) {
+        try {
+            TextChannel channel = getTicketArchiveChannel(guild);
+            return channel != null;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public static TextChannel getTicketArchiveChannel(@NotNull Guild guild) throws IllegalArgumentException {
+        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "ticket-archive-channel");
+        if (channel == null) {
+            return null;
+        }
+        return guild.getTextChannelById(channel);
+    }
+
+    public static List<Role> getTicketPingedRoles(@NotNull Guild guild) throws IllegalArgumentException {
+        String rawRoles = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "ticket-ping-roles");
+        if (rawRoles == null || rawRoles.isEmpty()) return List.of();
+
+        List<Role> roles = new ArrayList<>();
+        for (String role : rawRoles.split(",")) {
+            if (role.isEmpty()) continue;
+
+            Role r = guild.getRoleById(role);
+            if (r == null) continue;
+
+            roles.add(r);
+        }
+
+        return roles;
+    }
+
+    public static List<Role> getClientRoles(@NotNull Guild guild) throws IllegalArgumentException {
+        String rawRoles = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "client-roles");
+        if (rawRoles == null || rawRoles.isEmpty()) return List.of();
+
+        List<Role> roles = new ArrayList<>();
+        for (String role : rawRoles.split(",")) {
+            if (role.isEmpty()) continue;
+
+            Role r = guild.getRoleById(role);
+            if (r == null) continue;
+
+            roles.add(r);
+        }
+
+        return roles;
+    }
+
+    public static List<Role> getClientRoles(@NotNull Member member) throws IllegalArgumentException {
+        List<Role> guildRoles = new ArrayList<>(getClientRoles(member.getGuild()));
+
+        List<Role> memberRoles = new ArrayList<>();
+        for (Role role : member.getRoles()) {
+            if (guildRoles.contains(role)) memberRoles.add(role);
+        }
+
+        return memberRoles;
     }
 }

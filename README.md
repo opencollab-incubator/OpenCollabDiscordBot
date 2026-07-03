@@ -1,16 +1,16 @@
-# GeyserBot
+# OpenCollabBot
 [![forthebadge made-with-java](https://forthebadge.com/badges/made-with-java.svg)](https://java.com/)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Build Status](https://github.com/GeyserMC/GeyserDiscordBot/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/GeyserMC/GeyserDiscordBot/actions/workflows/build.yml)
 [![Discord](https://img.shields.io/discord/613163671870242838.svg?color=%237289da&label=discord)](http://discord.geysermc.org/)
 
-A bot for the GeyserMC Discord server
+A bot for the Open Collaboration Discord server
 
 # How to run
 - Download the latest build from [GitHub Actions](https://github.com/GeyserMC/GeyserDiscordBot/actions/workflows/build.yml) or build it yourself with `./gradlew build`
 - Configure a `bot.properties` file based on the example
-- Start the bot with `java -jar GeyserBot.jar` or put the systemd unit file into `/etc/systemd/system/` and `sudo systemctl daemon-reload && sudo systemctl enable --now geyserbot`
+- Start the bot with `java -jar OpenCollabBot.jar` or put the systemd unit file into `/etc/systemd/system/` and `sudo systemctl daemon-reload && sudo systemctl enable --now geyserbot`
 
 # Server preferences
 These allow customisation of the bot on a per-guild basis. These can be changed using `!settings set preference value` and checked using `!settings get preference`.

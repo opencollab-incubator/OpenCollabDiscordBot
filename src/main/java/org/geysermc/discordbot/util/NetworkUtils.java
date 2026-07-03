@@ -27,6 +27,17 @@ package org.geysermc.discordbot.util;
 
 import org.apache.commons.net.util.SubnetUtils;
 
+import java.io.BufferedInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Path;
+
 public class NetworkUtils {
 
     private static final SubnetUtils.SubnetInfo[] INTERNAL_IP_RANGES = new SubnetUtils.SubnetInfo[] {
@@ -69,5 +80,15 @@ public class NetworkUtils {
         } catch (IllegalArgumentException ignored) { } // If we get this then its likely a domain
 
         return false;
+    }
+
+    public static void downloadTo(URL url, Path path) throws IOException {
+        ReadableByteChannel readableByteChannel = Channels.newChannel(url.openStream());
+        FileOutputStream fileOutputStream = new FileOutputStream(path.toFile());
+        FileChannel fileChannel = fileOutputStream.getChannel();
+        fileChannel.transferFrom(readableByteChannel, 0, Long.MAX_VALUE);
+        fileChannel.close();
+        fileOutputStream.close();
+        readableByteChannel.close();
     }
 }

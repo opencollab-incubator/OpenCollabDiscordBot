@@ -242,13 +242,11 @@ public class GeyserBot {
                             new PersistentRoleHandler(),
                             new FileHandler(),
                             new LevelHandler(),
-                            new DumpHandler(),
                             new ErrorAnalyzer(),
                             new ShutdownHandler(),
                             new BadLinksHandler(),
                             new HelpHandler(),
                             new DeleteHandler(),
-                            new PreviewHandler(),
                             new AutoModHandler(),
                             new ExploitHandler(),
                             new WebhookLinkPreviewHandler(),
@@ -256,6 +254,9 @@ public class GeyserBot {
                             new HoneyPotHandler(),
                             new QuarantineHandler(),
                             new SpamHandler(),
+                            new TicketHandlers.Create(),
+                            new TicketHandlers.Action(),
+                            new TicketHandlers.Logs(),
                             client.build(),
                             tagClient.build())
                     .build();

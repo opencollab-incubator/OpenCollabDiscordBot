@@ -64,7 +64,7 @@ public class IssueCommand extends FilteredSlashCommand {
 
         this.options = Arrays.asList(
             new OptionData(OptionType.INTEGER, "number", "The issue/pr number", true),
-            new OptionData(OptionType.STRING, "repo", "The repository to lookup, defaults to GeyserMC/Geyser")
+            new OptionData(OptionType.STRING, "repo", "The repository to lookup, defaults to opencollaboration/website")
         );
     }
 
@@ -73,7 +73,7 @@ public class IssueCommand extends FilteredSlashCommand {
         // Issue
         int issue = (int) event.optLong("number", 0);
         // Repo
-        String repo = event.optString("repo", "GeyserMC/Geyser");
+        String repo = event.optString("repo", "opencollaboration/website");
 
         event.replyEmbeds(handle(issue, repo)).queue();
     }

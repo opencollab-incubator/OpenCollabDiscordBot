@@ -33,14 +33,20 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.separator.Separator;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.util.BotColors;
 
-public class ReportExploitCommand extends SlashCommand {
+import java.util.Arrays;
+import java.util.Locale;
 
-    public ReportExploitCommand() {
-        this.name = "reportexploit";
-        this.help = "Sends the message allowing users to report exploits";
+public class TicketMessageCommand extends SlashCommand {
+
+    public TicketMessageCommand() {
+        this.name = "ticketmessage";
+        this.help = "Sends the message allowing users to create tickets";
         this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
         this.userPermissions = new Permission[]{Permission.MANAGE_SERVER};
     }
@@ -48,14 +54,14 @@ public class ReportExploitCommand extends SlashCommand {
     @Override
     protected void execute(SlashCommandEvent event) {
         event.getChannel().sendMessageComponents(Container.of(
-                        TextDisplay.of("## Report an exploit"),
-                        TextDisplay.of("Found an exploit in an OpenCollaboration project? Please report it to us!\n\nPress the button below to open a new private report.\n\nThis is **NOT** a support thread! Misuse will be punished."),
+                        TextDisplay.of("## Create a ticket"),
+                        TextDisplay.of("Need help with Open Collab? Want to ask a question? Make a ticket!"),
                         Separator.createDivider(Separator.Spacing.SMALL),
-                        ActionRow.of(Button.danger("exploit_report", "Report"))
+                        ActionRow.of(Button.primary("ticket-create", "Create Ticket"))
                 ).withAccentColor(BotColors.SUCCESS.getColor()))
                 .useComponentsV2()
                 .queue();
 
-        event.reply("Setup report message").setEphemeral(true).queue();
+        event.reply("Setup ticket message").setEphemeral(true).queue();
     }
 }

@@ -84,7 +84,7 @@ public class FileHandler extends ListenerAdapter {
                 }
 
                 try {
-                    File attachmentFile = attachment.getProxy().downloadToFile(File.createTempFile("GeyserBotTempFile", ".temp")).get();
+                    File attachmentFile = attachment.getProxy().downloadToFile(File.createTempFile("OpenCollabBotTempFile", ".temp")).get();
 
                     JSONObject body = new JSONObject();
                     body.put("name", attachment.getFileName());

@@ -55,7 +55,7 @@ public class TicketMessageCommand extends SlashCommand {
     protected void execute(SlashCommandEvent event) {
         event.getChannel().sendMessageComponents(Container.of(
                         TextDisplay.of("## Create a ticket"),
-                        TextDisplay.of("Need help with Open Collab? Want to ask a question? Make a ticket!"),
+                        TextDisplay.of("To request assistance on an adopted project, please open a ticket here!"),
                         Separator.createDivider(Separator.Spacing.SMALL),
                         ActionRow.of(Button.primary("ticket-create", "Create Ticket"))
                 ).withAccentColor(BotColors.SUCCESS.getColor()))

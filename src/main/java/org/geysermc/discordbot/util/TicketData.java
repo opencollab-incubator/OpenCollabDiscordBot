@@ -27,5 +27,8 @@ package org.geysermc.discordbot.util;
 
 import net.dv8tion.jda.api.entities.Role;
 
-public record TicketData(String channelName, Role clientRole) {
+public record TicketData(Role clientRole, String clientId) {
+    public TicketData(Role clientRole) {
+        this(clientRole, clientRole.getName().toLowerCase().replace(' ', '-'));
+    }
 }

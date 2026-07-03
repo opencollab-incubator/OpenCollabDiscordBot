@@ -24,6 +24,7 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.restaction.ChannelAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.FileUpload;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.storage.ServerSettings;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.NetworkUtils;
@@ -84,7 +85,7 @@ public class TicketHandlers {
                 event.reply("You did not select a client role.").setEphemeral(true).queue();
             }
 
-            commonHandle(event, new TicketData(channelNameFromClientRole(selectedRole), selectedRole), event::replyEmbeds);
+            commonHandle(event, new TicketData(selectedRole), event::replyEmbeds);
         }
 
         private void commonHandle(GenericInteractionCreateEvent event, TicketData ticketData, Function<MessageEmbed, ReplyCallbackAction> methodCall) {
@@ -99,7 +100,7 @@ public class TicketHandlers {
                 return;
             }
 
-            ChannelAction<TextChannel> action = category.createTextChannel(ticketData.channelName())
+            ChannelAction<TextChannel> action = category.createTextChannel(getChannelNameFromTicketData(ticketData))
                     .addPermissionOverride(
                             event.getGuild().getPublicRole(), null, Collections.singleton(Permission.VIEW_CHANNEL)
                     )
@@ -179,14 +180,14 @@ public class TicketHandlers {
                 return null;
             } else if (clientRoles.size() == 1) {
                 Role role = clientRoles.getFirst();
-                return new TicketData(channelNameFromClientRole(role), role);
+                return new TicketData(role, role.getName().toLowerCase().replace(' ', '-'));
             } else {
                 return new TicketData(null, null);
             }
         }
 
-        public String channelNameFromClientRole(Role role) {
-            return role.getName().toLowerCase().replace(' ', '-');
+        public String getChannelNameFromTicketData(TicketData data) {
+            return data.clientId() + "-" + GeyserBot.storageManager.getAndIncrementTicketId(data.clientId());
         }
     }
 
@@ -265,7 +266,8 @@ public class TicketHandlers {
         public void handleTicketClose(@NotNull ButtonInteractionEvent event) {
             if (!(event.getChannel() instanceof TextChannel channel)) return;
 
-            event.reply("Deleting...").setEphemeral(true).queue();
+            // Ignore exceptions, channel is probably gone
+            event.reply("Deleting...").setEphemeral(true).queue(interactionHook -> {}, throwable -> {});
 
             TicketHelper.closeTicket(channel, event.getMember());
         }

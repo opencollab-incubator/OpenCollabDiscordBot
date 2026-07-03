@@ -54,6 +54,7 @@ public class SqliteStorageManager extends MySQLStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `mod_log` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `action` VARCHAR(32) NOT NULL, `target` INTEGER NOT NULL, `reason` TEXT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, CONSTRAINT `level_constraint` UNIQUE (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` INTEGER NOT NULL PRIMARY KEY, `server` INTEGER NOT NULL, `delay` INT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL PRIMARY KEY, `id` INTEGER NOT NULL);");
         createTables.close();
     }
 
@@ -270,5 +271,30 @@ public class SqliteStorageManager extends MySQLStorageManager {
             updateLevelValue.executeUpdate("INSERT OR REPLACE INTO `slow_mode` (`channel`, `server`, `delay`) VALUES (" + channel.getId() + ", " + channel.getGuild().getId() + ", " + delay + ");");
             updateLevelValue.close();
         } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public int getAndIncrementTicketId(String clientId) {
+        int id = -1;
+
+        try {
+            Statement getCurrentIdEntry = connection.createStatement();
+            ResultSet rs = getCurrentIdEntry.executeQuery("SELECT `id` FROM `tickets` WHERE `client_id`='" + clientId + "';");
+
+            while (rs.next()) {
+                id = rs.getInt("id");
+            }
+            if (id == -1) id = 0;
+
+            getCurrentIdEntry.close();
+
+            Statement setCurrentIdEntry = connection.createStatement();
+            setCurrentIdEntry.execute("INSERT OR REPLACE INTO `tickets` (`client_id`, `id`) VALUES ('" + clientId + "', " + (id + 1) + ");");
+            setCurrentIdEntry.close();
+        } catch (SQLException ignored) {
+            ignored.printStackTrace();
+        }
+
+        return id;
     }
 }

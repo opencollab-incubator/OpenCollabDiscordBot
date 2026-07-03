@@ -181,4 +181,11 @@ public abstract class AbstractStorageManager {
      * @param delay Delay between messages in seconds
      */
     public abstract void setSlowModeChannel(TextChannel channel, int delay);
+
+    /**
+     * Gets the current ticket ID then increments it
+     * @param clientId The client ID
+     * @return the current ticket ID
+     */
+    public abstract int getAndIncrementTicketId(String clientId);
 }

@@ -60,6 +60,7 @@ public class MySQLStorageManager extends AbstractStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `mod_log` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `time` BIGINT NOT NULL, `user` BIGINT NOT NULL, `action` VARCHAR(32) NOT NULL, `target` BIGINT NOT NULL, `reason` TEXT NOT NULL, PRIMARY KEY(`id`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `user` BIGINT NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, PRIMARY KEY(`id`), UNIQUE KEY `level_constraint` (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` BIGINT NOT NULL, `server` BIGINT NOT NULL, `delay` INT NOT NULL, PRIMARY KEY(`channel`));");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL, `id` INT NOT NULL, PRIMARY KEY(`client_id`));");
         createTables.close();
     }
 
@@ -302,5 +303,35 @@ public class MySQLStorageManager extends AbstractStorageManager {
             updateLevelValue.executeUpdate("INSERT INTO `slow_mode` (`channel`, `server`, `delay`) VALUES (" + channel.getId() + ", " + channel.getGuild().getId() + ", " + delay + ") ON DUPLICATE KEY UPDATE `delay`=" + delay + ";");
             updateLevelValue.close();
         } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public int getAndIncrementTicketId(String clientId) {
+        checkConnection();
+
+        int id = -1;
+
+        try {
+            Statement getCurrentIdEntry = connection.createStatement();
+            ResultSet rs = getCurrentIdEntry.executeQuery("SELECT `id` FROM `tickets` WHERE `client_id`=" + clientId + ";");
+
+            while (rs.next()) {
+                id = rs.getInt("id");
+            }
+
+            getCurrentIdEntry.close();
+
+            Statement setCurrentIdEntry = connection.createStatement();
+            if (id != -1) {
+                setCurrentIdEntry.execute("UPDATE `tickets` SET `id` = " + (id + 1) + " WHERE `client+id`='" + clientId + "';");
+            } else {
+                setCurrentIdEntry.execute("INSERT INTO `tickets` (`client_id`, `id`) VALUES ('" + clientId + "', 0);");
+
+                id = 0;
+            }
+            setCurrentIdEntry.close();
+        } catch (SQLException ignored) { }
+
+        return id;
     }
 }

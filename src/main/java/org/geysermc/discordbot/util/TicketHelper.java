@@ -116,7 +116,7 @@ public class TicketHelper {
         }
 
         Path logDirectory = TicketHelper.getTicketDirectory(textChannel);
-        Path tempZip = Path.of("tmp", "ticket_%s.zip".formatted(channel.getId()));
+        Path tempZip = Path.of("tmp", "ticket_%s.zip".formatted(channel.getName()));
 
         String clientName = "Unknown";
 

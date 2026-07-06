@@ -48,7 +48,7 @@ public enum BotEmojis {
     public static void init(JDA jda) {
         jda.retrieveApplicationEmojis().queue(emojis -> {
             for (BotEmojis emoji : values()) {
-                EMOJI_MAP.put(emoji, emojis.stream().filter(e -> e.getName().equals(emoji.name().toLowerCase(Locale.ROOT))).findFirst().get());
+                EMOJI_MAP.put(emoji, emojis.stream().filter(e -> e.getName().equals(emoji.name().toLowerCase(Locale.ROOT))).findFirst().orElse(null));
             }
         });
     }

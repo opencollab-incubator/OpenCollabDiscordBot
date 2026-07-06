@@ -73,6 +73,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class GeyserBot {
     // Instance Variables
@@ -295,13 +296,19 @@ public class GeyserBot {
             }
         }, 5, TimeUnit.SECONDS);
 
-        // Start the bStats tracking thread
+        List<String> messages = List.of(
+                "Building Minecraft open source software.",
+                "Collaborating to improve OSS!",
+                "Supporting creators with open tools, sustained by collaboration."
+        );
+
+        AtomicInteger msgIndex = new AtomicInteger();
+
         generalThreadPool.scheduleAtFixedRate(() -> {
-            JSONArray servers = RestClient.get("https://bstats.org/api/v1/plugins/5273/charts/servers/data").asJSONArray();
-            JSONArray players = RestClient.get("https://bstats.org/api/v1/plugins/5273/charts/players/data").asJSONArray();
-            int serverCount = servers.getJSONArray(servers.length() - 1).getInt(1);
-            int playerCount = players.getJSONArray(players.length() - 1).getInt(1);
-            jda.getPresence().setActivity(Activity.playing(BotHelpers.coolFormat(serverCount) + " servers, " + BotHelpers.coolFormat(playerCount) + " players"));
+            jda.getPresence().setActivity(Activity.playing(messages.get(msgIndex.get())));
+            if (msgIndex.incrementAndGet() == messages.size()) {
+                msgIndex.set(0);
+            }
         }, 5, 60 * 5, TimeUnit.SECONDS);
     }
 

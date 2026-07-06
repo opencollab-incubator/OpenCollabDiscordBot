@@ -243,7 +243,6 @@ public class GeyserBot {
                             new HelpHandler(),
                             new DeleteHandler(),
                             new AutoModHandler(),
-                            new ExploitHandler(),
                             new WebhookLinkPreviewHandler(),
                             new ReadyListener(),
                             new HoneyPotHandler(),

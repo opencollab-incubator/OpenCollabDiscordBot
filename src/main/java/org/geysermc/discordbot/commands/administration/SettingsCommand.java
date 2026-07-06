@@ -65,24 +65,18 @@ public class SettingsCommand extends SlashCommand {
                         .addChoice("Check domains", "check-domains")
                         .addChoice("Convert Extensions", "convert-extensions")
                         .addChoice("Client Roles", "client-roles")
-                        .addChoice("Don't level", "dont-level")
                         .addChoice("Don't log","dont-log")
                         .addChoice("Donation feeds channel", "donation-feeds-channel")
-                        .addChoice("Exploit reports notify channel", "exploit-reports-notify-channel")
-                        .addChoice("Forum Channel", "forum-channel")
-                        .addChoice("Health Checks", "health-checks")
                         .addChoice("Honey Pot Channel", "honey-pot-channel")
                         .addChoice("Log channel", "log-channel")
                         .addChoice("Moderation channel", "moderation-channel")
                         .addChoice("Moderation role", "moderation-role")
                         .addChoice("Punishment Message", "punishment-message")
-                        .addChoice("Roles", "roles")
                         .addChoice("RSS Feeds", "rss-feeds")
                         .addChoice("Ticket allowed roles", "ticket-allowed-roles")
                         .addChoice("Ticket archive channel", "ticket-archive-channel")
                         .addChoice("Ticket categories", "ticket-categories")
-                        .addChoice("Ticket ping roles", "ticket-ping-roles")
-                        .addChoice("Update channel", "update-channel"),
+                        .addChoice("Ticket ping roles", "ticket-ping-roles"),
 
                 new OptionData(OptionType.STRING, "value", "The value to set")
         );

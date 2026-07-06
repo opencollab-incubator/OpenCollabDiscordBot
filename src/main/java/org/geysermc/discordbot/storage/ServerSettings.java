@@ -160,18 +160,6 @@ public class ServerSettings {
     }
 
     /**
-     * Get the update channel for the selected guild
-     *
-     * @param guild ID of the guild to get the channel for
-     * @return The {@link TextChannel} for updates
-     * @throws IllegalArgumentException If the channel is null or invalid
-     */
-    public static TextChannel getUpdateChannel(@NotNull Guild guild) throws IllegalArgumentException {
-        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "update-channel");
-        return guild.getTextChannelById(channel);
-    }
-
-    /**
      * Check if the given channel should be excluded from logs
      *
      * @param channel The {@link MessageChannel} to check
@@ -204,24 +192,6 @@ public class ServerSettings {
     }
 
     /**
-     * Check if the given channel should be excluded from the level system
-     * if value is 0 then disables all channels
-     *
-     * @param channel The {@link MessageChannel} to check
-     * @return If we should exclude the channel
-     */
-    public static boolean shouldDisableLevels(MessageChannel channel) {
-        Guild guild = getGuild(channel);
-
-        if (guild == null) {
-            return true;
-        }
-
-        List<String> dontLevel = getList(guild.getIdLong(), "dont-level");
-        return dontLevel.size() > 0 && dontLevel.get(0).equals("0") || dontLevel.contains(channel.getId());
-    }
-
-    /**
      * Get the guild from a {@link MessageChannel}
      *
      * @param channel The channel to get the guild for
@@ -236,73 +206,6 @@ public class ServerSettings {
         }
 
         return guild;
-    }
-
-    /**
-     * Check if the given guild has leveling disabled
-     *
-     * @param guild The {@link Guild} to check
-     * @return If levels are disabled
-     */
-    public static boolean serverLevelsDisabled(@NotNull Guild guild) {
-        List<String> dontLevel = getList(guild.getIdLong(), "dont-level");
-        return dontLevel.size() > 0 && dontLevel.get(0).equals("0");
-    }
-
-    /**
-     * Get the forum channel for the selected guild
-     *
-     * @param guild ID of the guild to get the channel for
-     * @return The {@link ForumChannel} for the guild
-     */
-    @Nullable
-    public static ForumChannel getForumChannel(@NotNull Guild guild) {
-        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "forum-channel");
-
-        if (channel == null) {
-            return null;
-        }
-        return guild.getForumChannelById(channel);
-    }
-
-    /**
-     * Get the preview feeds channel for the selected guild
-     *
-     * @param guild ID of the guild to get the channel for
-     * @return The preview feeds channel for the guild
-     */
-    public static NewsChannel getPreviewFeedsChannel(@NotNull Guild guild) {
-        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "preview-feeds-channel");
-
-        if (channel == null) {
-            return null;
-        }
-
-        return guild.getNewsChannelById(channel);
-    }
-
-    /**
-     * Get the preview channel for the selected guild
-     *
-     * @param guild ID of the guild to get the channel for
-     * @return The preview channel for the guild
-     */
-    public static ForumChannel getPreviewChannel(@NotNull Guild guild) {
-        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "preview-channel");
-
-        if (channel == null) {
-            return null;
-        }
-
-        return guild.getForumChannelById(channel);
-    }
-
-    public static TextChannel getExploitReportsNotifyChannel(@NotNull Guild guild) throws IllegalArgumentException {
-        String channel = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), "exploit-reports-notify-channel");
-        if (channel == null || channel.isEmpty()) {
-            return null;
-        }
-        return guild.getTextChannelById(channel);
     }
 
     public static List<Category> getTicketCategories(@NotNull Guild guild) throws IllegalArgumentException {

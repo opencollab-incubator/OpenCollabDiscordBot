@@ -38,6 +38,7 @@ import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.util.BotColors;
+import org.geysermc.discordbot.util.ticket.TicketType;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -45,7 +46,7 @@ import java.util.Locale;
 public class TicketMessageCommand extends SlashCommand {
 
     public TicketMessageCommand() {
-        this.name = "ticketmessage";
+        this.name = "ticket-message";
         this.help = "Sends the message allowing users to create tickets";
         this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
         this.userPermissions = new Permission[]{Permission.MANAGE_SERVER};
@@ -57,11 +58,11 @@ public class TicketMessageCommand extends SlashCommand {
                         TextDisplay.of("## Create a ticket"),
                         TextDisplay.of("To request assistance on an adopted project, please open a ticket here!"),
                         Separator.createDivider(Separator.Spacing.SMALL),
-                        ActionRow.of(Button.primary("ticket-create", "Create Ticket"))
+                        TicketType.getButtons()
                 ).withAccentColor(BotColors.SUCCESS.getColor()))
                 .useComponentsV2()
                 .queue();
 
-        event.reply("Setup ticket message").setEphemeral(true).queue();
+        event.reply("Setup ticket message.").setEphemeral(true).queue();
     }
 }

@@ -23,12 +23,27 @@
  * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.util;
+package org.geysermc.discordbot.util.ticket;
 
 import net.dv8tion.jda.api.entities.Role;
+import org.geysermc.discordbot.GeyserBot;
 
-public record TicketData(Role clientRole, String clientId) {
-    public TicketData(Role clientRole) {
-        this(clientRole, clientRole.getName().toLowerCase().replace(' ', '-'));
+public record TicketData(Role clientRole, String clientId, int id, TicketType type) {
+
+    public TicketData(Role clientRole, String clientId, TicketType type) {
+        this(clientRole, clientId, GeyserBot.storageManager.getAndIncrementTicketId(clientId), type);
+    }
+
+    public TicketData(Role clientRole, TicketType type) {
+        this(clientRole, clientRole.getName().toLowerCase().replace(' ', '-'), type);
+    }
+
+    public String getChannelName() {
+        String prefix = type.options().channelPrefix() == null ? "" : type.options().channelPrefix() + "-";
+        return prefix + clientId + "-" + id;
+    }
+
+    public TicketMetadata metadata() {
+        return new TicketMetadata(String.valueOf(id), clientId, clientRole.getName(), clientRole.getId(), type);
     }
 }

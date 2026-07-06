@@ -25,6 +25,9 @@
 
 package org.geysermc.discordbot.util;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -33,6 +36,8 @@ import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.commons.io.FileUtils;
 import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.util.ticket.TicketData;
+import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +77,8 @@ public class TicketHelper {
             .parseStrict()
             .toFormatter();
     private static final Logger log = LoggerFactory.getLogger(TicketHelper.class);
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting().create();
 
     public static boolean isTicketChannel(GuildChannel c) {
         if (!(c instanceof TextChannel channel)) return false;
@@ -115,14 +122,17 @@ public class TicketHelper {
             return;
         }
 
-        Path logDirectory = TicketHelper.getTicketDirectory(textChannel);
-        Path tempZip = Path.of("tmp", "ticket_%s.zip".formatted(channel.getName()));
+        TicketMetadata metadata = getTicketMetadata(textChannel);
+        if (metadata == null) {
+            log.error("Ticket is logged but no metadata is present.");
+            textChannel.sendMessage("Something went wrong while deleting ticket.").queue();
+            return;
+        }
 
-        String clientName = "Unknown";
+        Path logDirectory = TicketHelper.getTicketDirectory(textChannel);
+        Path tempZip = Path.of("tmp", "ticket_%s_%s.zip".formatted(metadata.clientId(), metadata.id()));
 
         try {
-            Path clientNamePath = logDirectory.resolve("client_name.txt");
-            if (Files.exists(clientNamePath)) clientName = Files.readString(clientNamePath);
             Files.createDirectories(tempZip.getParent());
             FileOutputStream stream = new FileOutputStream(tempZip.toFile());
             ZipOutputStream zipOut = new ZipOutputStream(stream);
@@ -150,7 +160,7 @@ public class TicketHelper {
             throw new RuntimeException(e);
         }
 
-        archiveChannel.sendFiles(FileUpload.fromData(tempZip)).setContent("Ticket closed by %s. Client: %s".formatted(member.getAsMention(), clientName))
+        archiveChannel.sendFiles(FileUpload.fromData(tempZip)).setContent("Ticket closed by %s.\nClient: <@&%s>\nType: %s".formatted(member.getAsMention(), metadata.clientRoleId(), metadata.type().name()))
                 .setAllowedMentions(List.of()).queue(message -> {
             try {
                 Files.deleteIfExists(tempZip);
@@ -167,15 +177,37 @@ public class TicketHelper {
         return Files.exists(savePath);
     }
 
-    public static void initTicket(TextChannel channel, String clientName) {
-        Path savePath = Path.of("tickets", channel.getId(), "client_name.txt");
+    public static void initTicket(TextChannel channel, TicketData ticketData) {
+        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
         try {
             if (Files.notExists(savePath)) {
                 Files.createDirectories(savePath.getParent());
                 Files.createFile(savePath);
             }
 
-            Files.writeString(savePath, clientName);
+            TicketMetadata metadata = ticketData.metadata();
+
+            Files.writeString(savePath, GSON.toJson(metadata));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static TicketMetadata getTicketMetadata(TextChannel channel) {
+        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
+        if (Files.notExists(savePath)) return null;
+        try {
+            return GSON.fromJson(Files.newBufferedReader(savePath), TicketMetadata.class);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void setTicketMetadata(TextChannel channel, TicketMetadata metadata) {
+        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
+        if (Files.notExists(savePath)) return;
+        try {
+            Files.writeString(savePath, GSON.toJson(metadata));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

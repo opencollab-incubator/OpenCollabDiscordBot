@@ -48,6 +48,8 @@ import org.geysermc.discordbot.storage.ServerSettings;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.DicesCoefficient;
 import org.geysermc.discordbot.util.TicketHelper;
+import org.geysermc.discordbot.util.ticket.TicketMetadata;
+import org.geysermc.discordbot.util.ticket.TicketType;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
@@ -65,7 +67,8 @@ public class TicketCommand extends SlashCommand {
         this.children = new SlashCommand[] {
                 new CloseTicketSubCommand(),
                 new AddUserTicketSubCommand(),
-                new RemoveUserTicketSubCommand()
+                new RemoveUserTicketSubCommand(),
+                new SetTicketTypeSubCommand()
         };
     }
 
@@ -95,7 +98,7 @@ public class TicketCommand extends SlashCommand {
             this.name = "add-user";
             this.help = "Adds a user to the current ticket";
             this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
-            this.options = Arrays.asList(
+            this.options = List.of(
                     new OptionData(OptionType.USER, "member", "The member to add", true)
             );
         }
@@ -121,7 +124,7 @@ public class TicketCommand extends SlashCommand {
             this.name = "remove-user";
             this.help = "Removes a user to the current ticket";
             this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
-            this.options = Arrays.asList(
+            this.options = List.of(
                     new OptionData(OptionType.USER, "member", "The member to remove", true)
             );
         }
@@ -139,6 +142,50 @@ public class TicketCommand extends SlashCommand {
                     });
 
             event.reply("Removed %s.".formatted(member.getAsMention())).setEphemeral(true).queue();
+        }
+    }
+
+    public static class SetTicketTypeSubCommand extends SlashCommand {
+        public SetTicketTypeSubCommand() {
+            this.name = "set-ticket-type";
+            this.help = "Sets the current ticket type";
+
+            this.options = List.of(
+                    new OptionData(OptionType.STRING, "type", "The ticket type", true)
+                            .addChoices(Arrays.stream(TicketType.values()).map(type ->
+                                    new Command.Choice(type.name(), type.name())).toList())
+            );
+        }
+
+        @Override
+        protected void execute(@NotNull SlashCommandEvent event) {
+            if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
+                event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            TicketMetadata metadata = TicketHelper.getTicketMetadata(event.getTextChannel());
+            if (metadata == null) {
+                event.reply("Something went wrong.").setEphemeral(true).queue();
+                return;
+            }
+            TicketType currentType = metadata.type();
+            metadata = metadata.withTicketType(event.optString("type"));
+            TicketHelper.setTicketMetadata(event.getTextChannel(), metadata);
+
+            event.getTextChannel().getManager().setName(metadata.getChannelName()).queue();
+
+            StringBuilder logLine = new StringBuilder();
+            logLine.append("@").append(event.getUser().getName())
+                    .append(" (ID: ")
+                    .append(event.getUser().getId())
+                    .append(") changed the ticket type from ")
+                    .append(currentType.name())
+                    .append(" to ")
+                    .append(metadata.type().name());
+
+            TicketHelper.logTicketAction(event.getTextChannel(), logLine.toString());
+
+            event.reply("Changed ticket type.").setEphemeral(true).queue();
         }
     }
 }

@@ -100,7 +100,7 @@ public class EchoCommand extends SlashCommand {
                     new OptionData(OptionType.STRING, "description", "The description of the embed"),
                     new OptionData(OptionType.STRING, "author", "The author of the embed"),
                     new OptionData(OptionType.STRING, "footer", "The footer of the embed"),
-                    new OptionData(OptionType.STRING, "color", "The color of the embed"),
+                    new OptionData(OptionType.STRING, "color", "The color of the embed (In hex format)"),
                     new OptionData(OptionType.STRING, "title-url", "The title URL of the embed"),
                     new OptionData(OptionType.STRING, "thumbnail-url", "The thumbnail URL of the embed"),
                     new OptionData(OptionType.STRING, "footer-icon-url", "The footer icon URL of the embed"),
@@ -115,61 +115,45 @@ public class EchoCommand extends SlashCommand {
             EmbedBuilder builder = new EmbedBuilder();
 
             String title = event.optString("title");
-            if (title != null) {
-                String titleUrl = event.optString("title-url");
-                if (titleUrl != null) builder.setTitle(title, titleUrl);
-                else builder.setTitle(title);
-            }
+            String titleUrl = event.optString("title-url");
+            builder.setTitle(title, titleUrl);
 
             String description = event.optString("description");
-            if (description != null) {
-                builder.setDescription(description);
-            }
+            builder.setDescription(description);
 
             String author = event.optString("author");
-            if (author != null) {
-                String authorUrl = event.optString("author-url");
-                if (authorUrl != null) {
-                    String authorIconUrl = event.optString("author-icon-url");
-                    if (authorIconUrl != null) builder.setAuthor(author, authorUrl, authorIconUrl);
-                    else builder.setAuthor(author, authorUrl);
-                } else builder.setAuthor(author);
-            }
+            String authorUrl = event.optString("author-url");
+            String authorIconUrl = event.optString("author-icon-url");
+            builder.setAuthor(author, authorUrl, authorIconUrl);
 
             String footer = event.optString("footer");
-            if (footer != null) {
-                String footerIconUrl = event.optString("footer-icon-url");
-                if (footerIconUrl != null) builder.setFooter(footer, footerIconUrl);
-                else builder.setFooter(footer);
-            }
+            String footerIconUrl = event.optString("footer-icon-url");
+            builder.setFooter(footer, footerIconUrl);
 
             String color = event.optString("color");
-            if (color != null) {
-                if (color.startsWith("#")) color = color.substring(1);
-
-                int red = Integer.parseInt(color.substring(0, 2), 16);
-                int green = Integer.parseInt(color.substring(2, 4), 16);
-                int blue = Integer.parseInt(color.substring(4, 6), 16);
-
-                builder.setColor(new Color(red, green, blue));
-            }
-
-            String thumbnailUrl = event.optString("thumbnail-url");
-            if (thumbnailUrl != null) {
-                builder.setThumbnail(thumbnailUrl);
-            }
-
-            String imageUrl = event.optString("image-url");
-            if (imageUrl != null) {
-                builder.setImage(imageUrl);
-            }
-
-            if (builder.isEmpty()) {
-                event.reply("Cannot send an empty embed.").setEphemeral(true).queue();
+            Color c;
+            try {
+                c = color == null ? null : Color.decode(color);
+            } catch (NumberFormatException e) {
+                event.reply("Invalid color was provided, either input a raw ARGB number, or a hex color code.")
+                        .setEphemeral(true).queue();
                 return;
             }
+            builder.setColor(c);
 
-            MessageEmbed embed = builder.build();
+            String thumbnailUrl = event.optString("thumbnail-url");
+            builder.setThumbnail(thumbnailUrl);
+
+            String imageUrl = event.optString("image-url");
+            builder.setImage(imageUrl);
+
+            MessageEmbed embed;
+            try {
+                embed = builder.build();
+            } catch (IllegalStateException e) {
+                event.reply(e.getMessage()).setEphemeral(true).queue();
+                return;
+            }
 
             String messageLink = event.optString("message_link");
             if (messageLink == null) {

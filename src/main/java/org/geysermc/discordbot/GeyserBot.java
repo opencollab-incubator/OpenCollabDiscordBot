@@ -257,6 +257,7 @@ public class GeyserBot {
                             new TicketHandlers.Create(),
                             new TicketHandlers.Action(),
                             new TicketHandlers.Logs(),
+                            new RolesMessageHandler(),
                             client.build(),
                             tagClient.build())
                     .build();

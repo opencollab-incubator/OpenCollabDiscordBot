@@ -64,11 +64,9 @@ public class DownloadCommand extends SlashCommand {
                 .put("geyser", this.defaultDownloadOption)
                 .put("floodgate", new GeyserDownloadOption("Floodgate", "A plugin which allows Bedrock Edition clients to join Java edition servers without a Java Edition account.", "https://geysermc.org/download#floodgate"))
                 .put("floodgate-modded", new GeyserDownloadOption("Floodgate Modded", "A mod which allows Bedrock Edition clients to join Java edition servers without a Java Edition account.", "https://modrinth.com/mod/floodgate"))
-                .put("paper", new DownloadOption("Paper", "Paper is a server software based on Spigot with better performance and more modern features.", "https://papermc.io/downloads", "https://github.com/PaperMC.png"))
-                .put("viaversion", new DownloadOption("ViaVersion", "ViaVersion is a plugin which allows modern clients to join older Java Edition servers.", "https://ci.viaversion.com/job/ViaVersion/", "https://github.com/ViaVersion.png"))
-                .put("hydraulic", new GeyserDownloadOption("Hydraulic (Beta)", "A companion mod to Geyser which allows for Bedrock players to join modded Java Edition servers.", "https://geysermc.org/download?project=other-projects&hydraulic=expanded"))
                 .put("rainbow", new GeyserDownloadOption("Rainbow (Beta)", "A Minecraft mod to generate Geyser item mappings and bedrock resourcepacks for use with Geyser's custom item API (v2). ", "https://geysermc.org/download?project=other-projects&rainbow=expanded"))
                 .put("thunder", new GeyserDownloadOption("Thunder (Beta)", "A java application to convert simple Java Edition resource packs to Bedrock Edition ones.", "https://geysermc.org/download?project=other-projects&thunder=expanded"))
+                .put("boar", new OpenCollabDownloadOption("Boar", "A bedrock anticheat with Geyser compatibility.", "https://modrinth.com/plugin/boar"))
                 .build();
 
         List<Command.Choice> choices = new ArrayList<>();
@@ -137,6 +135,12 @@ public class DownloadCommand extends SlashCommand {
     private static class GeyserDownloadOption extends DownloadOption {
         public GeyserDownloadOption(String friendlyName, String description, String downloadUrl) {
             super(friendlyName, description, downloadUrl, "https://github.com/GeyserMC.png");
+        }
+    }
+
+    private static class OpenCollabDownloadOption extends DownloadOption {
+        public OpenCollabDownloadOption(String friendlyName, String description, String downloadUrl) {
+            super(friendlyName, description, downloadUrl, "https://github.com/opencollaboration.png");
         }
     }
 }

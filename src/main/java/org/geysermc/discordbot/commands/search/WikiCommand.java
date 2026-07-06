@@ -31,6 +31,7 @@ import com.jagrosh.jdautilities.command.CommandEvent;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.GeyserBot;
@@ -86,6 +87,7 @@ public class WikiCommand extends FilteredSlashCommand {
         this.arguments = "<query>";
         this.help = "Search the Geyser wiki for a query";
         this.guildOnly = false;
+        this.contexts = new InteractionContextType[0];
 
         this.options = Collections.singletonList(new OptionData(OptionType.STRING, "query", "The search query", true));
     }

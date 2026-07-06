@@ -41,10 +41,14 @@ public class GithubFileFinder {
         {
             add("GeyserMC/Geyser");
             add("GeyserMC/Floodgate");
-            add("GeyserMC/Geyser-Fabric");
             add("GeyserMC/GeyserConnect");
             add("GeyserMC/Cumulus");
             add("GeyserMC/geyser-adapters");
+            add("CloudburstMC/Protocol");
+            add("CloudburstMC/Network");
+            add("CloudburstMC/ProxyPass");
+            add("opencollab-incubator/Boar");
+            add("opencollaboration/discord-bot");
         }
     };
 

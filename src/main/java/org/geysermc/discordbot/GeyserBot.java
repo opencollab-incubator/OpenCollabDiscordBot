@@ -43,24 +43,20 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.messages.MessageRequest;
 import org.geysermc.discordbot.health_checker.HealthCheckerManager;
-import org.geysermc.discordbot.http.Server;
 import org.geysermc.discordbot.listeners.*;
 import org.geysermc.discordbot.storage.AbstractStorageManager;
 import org.geysermc.discordbot.storage.SlowModeInfo;
 import org.geysermc.discordbot.storage.StorageType;
 import org.geysermc.discordbot.tags.TagsListener;
 import org.geysermc.discordbot.tags.TagsManager;
-import org.geysermc.discordbot.util.BotHelpers;
 import org.geysermc.discordbot.util.PropertiesManager;
 import org.geysermc.discordbot.util.RssFeedManager;
 import org.geysermc.discordbot.util.SentryEventManager;
-import org.json.JSONArray;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pw.chew.chewbotcca.util.RestClient;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -88,7 +84,6 @@ public class GeyserBot {
 
     private static JDA jda;
     private static GitHub github;
-    private static Server httpServer;
     private static SearchClient algolia;
 
     static {
@@ -242,7 +237,6 @@ public class GeyserBot {
                             new SwearHandler(),
                             new PersistentRoleHandler(),
                             new FileHandler(),
-                            new LevelHandler(),
                             new ErrorAnalyzer(),
                             new ShutdownHandler(),
                             new BadLinksHandler(),
@@ -269,17 +263,6 @@ public class GeyserBot {
 
         // Register listeners
         jda.addEventListener();
-
-        // Setup the http server
-        if (PropertiesManager.enableWeb()) {
-            try {
-                httpServer = new Server();
-                httpServer.start();
-            } catch (Exception e) {
-                // TODO
-                e.printStackTrace();
-            }
-        }
 
         // Setup the health check scheduler
         HealthCheckerManager.setup();
@@ -328,17 +311,11 @@ public class GeyserBot {
         return generalThreadPool;
     }
 
-    public static Server getHttpServer() {
-        return httpServer;
-    }
-
     public static void shutdown() {
         GeyserBot.LOGGER.info("Shutting down storage...");
         storageManager.closeStorage();
         GeyserBot.LOGGER.info("Shutting down thread pool...");
         generalThreadPool.shutdown();
-        GeyserBot.LOGGER.info("Shutting http server...");
-        httpServer.stop();
         GeyserBot.LOGGER.info("Finished shutdown, exiting!");
         System.exit(0);
     }

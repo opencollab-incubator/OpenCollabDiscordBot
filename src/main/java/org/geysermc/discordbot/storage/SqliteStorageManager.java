@@ -52,7 +52,6 @@ public class SqliteStorageManager extends MySQLStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `preferences` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `key` VARCHAR(32), `value` TEXT NOT NULL, CONSTRAINT `pref_constraint` UNIQUE (`server`,`key`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `persistent_roles` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `role` INTEGER NOT NULL, CONSTRAINT `role_constraint` UNIQUE (`server`,`user`,`role`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `mod_log` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `action` VARCHAR(32) NOT NULL, `target` INTEGER NOT NULL, `reason` TEXT NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, CONSTRAINT `level_constraint` UNIQUE (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` INTEGER NOT NULL PRIMARY KEY, `server` INTEGER NOT NULL, `delay` INT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL PRIMARY KEY, `id` INTEGER NOT NULL);");
         createTables.close();
@@ -200,50 +199,6 @@ public class SqliteStorageManager extends MySQLStorageManager {
             updateLevelValue.executeUpdate("UPDATE `mod_log` SET `reason`='" + reason + "' WHERE `id`=" + id + ";");
             updateLevelValue.close();
         } catch (SQLException ignored) { }
-    }
-
-    @Override
-    public LevelInfo getLevel(Member user) {
-        try {
-            Statement getLevelValue = connection.createStatement();
-            ResultSet rs = getLevelValue.executeQuery("SELECT `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + user.getGuild().getId() + " AND `user`=" + user.getId() + ";");
-
-            if (rs.next()) {
-                return new LevelInfo(user.getIdLong(), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages"));
-            }
-
-            getLevelValue.close();
-
-            return new LevelInfo(0, 0, 0, 0);
-        } catch (SQLException ignored) { }
-
-        return null;
-    }
-
-    @Override
-    public void setLevel(Member user, LevelInfo levelInfo) {
-        try {
-            Statement updateLevelValue = connection.createStatement();
-            updateLevelValue.executeUpdate("INSERT OR REPLACE INTO `levels` (`server`, `user`, `level`, `xp`, `messages`) VALUES (" + user.getGuild().getId() + ", " + user.getId() + ", " + levelInfo.getLevel() + ", " + levelInfo.getXp() + ", " + levelInfo.getMessages() + ");");
-            updateLevelValue.close();
-        } catch (SQLException ignored) { }
-    }
-
-    @Override
-    public List<LevelInfo> getLevels(long guild) {
-        List<LevelInfo> levels = new ArrayList<>();
-        try {
-            Statement getLevelValue = connection.createStatement();
-            ResultSet rs = getLevelValue.executeQuery("SELECT `user`, `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + guild + " ORDER BY xp DESC LIMIT 100;");
-
-            while (rs.next()) {
-                levels.add(new LevelInfo(rs.getLong("user"), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages")));
-            }
-
-            getLevelValue.close();
-        } catch (SQLException ignored) { }
-
-        return levels;
     }
 
     @Override

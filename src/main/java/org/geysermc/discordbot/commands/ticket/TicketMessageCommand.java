@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2025 GeyserMC. http://geysermc.org
+ * Copyright (c) 2020-2026 Open Collaboration. https://opencollaboration.dev, GeyserMC. https://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,29 +19,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @author GeyserMC
- * @link https://github.com/GeyserMC/GeyserDiscordBot
+ * @author OpenCollab, GeyserMC
+ * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.commands;
+package org.geysermc.discordbot.commands.ticket;
 
 import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.components.actionrow.ActionRow;
-import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.separator.Separator;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
-import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
-import net.dv8tion.jda.api.interactions.commands.OptionType;
-import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.ticket.TicketType;
-
-import java.util.Arrays;
-import java.util.Locale;
 
 public class TicketMessageCommand extends SlashCommand {
 

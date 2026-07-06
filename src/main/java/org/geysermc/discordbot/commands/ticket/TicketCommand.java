@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2026 GeyserMC. http://geysermc.org
+ * Copyright (c) 2020-2026 Open Collaboration. https://opencollaboration.dev, GeyserMC. https://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,41 +19,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @author GeyserMC
- * @link https://github.com/GeyserMC/GeyserDiscordBot
+ * @author OpenCollab, GeyserMC
+ * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.commands.moderation;
+package org.geysermc.discordbot.commands.ticket;
 
 import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.channel.concrete.ForumChannel;
-import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
-import net.dv8tion.jda.api.entities.channel.forums.ForumTag;
-import net.dv8tion.jda.api.entities.channel.forums.ForumTagSnowflake;
-import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-import net.dv8tion.jda.api.managers.channel.concrete.ThreadChannelManager;
-import net.dv8tion.jda.internal.utils.Checks;
-import org.geysermc.discordbot.listeners.TicketHandlers;
-import org.geysermc.discordbot.storage.ServerSettings;
-import org.geysermc.discordbot.util.BotColors;
-import org.geysermc.discordbot.util.DicesCoefficient;
 import org.geysermc.discordbot.util.TicketHelper;
 import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.geysermc.discordbot.util.ticket.TicketType;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.util.*;
 
 public class TicketCommand extends SlashCommand {
@@ -68,6 +53,8 @@ public class TicketCommand extends SlashCommand {
                 new CloseTicketSubCommand(),
                 new AddUserTicketSubCommand(),
                 new RemoveUserTicketSubCommand(),
+                new AddRoleTicketSubCommand(),
+                new RemoveRoleTicketSubCommand(),
                 new SetTicketTypeSubCommand()
         };
     }
@@ -145,9 +132,61 @@ public class TicketCommand extends SlashCommand {
         }
     }
 
+    public static class AddRoleTicketSubCommand extends SlashCommand {
+        public AddRoleTicketSubCommand() {
+            this.name = "add-role";
+            this.help = "Adds a role to the current ticket";
+            this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
+            this.options = List.of(
+                    new OptionData(OptionType.ROLE, "role", "The role to add", true)
+            );
+        }
+
+        @Override
+        protected void execute(SlashCommandEvent event) {
+            if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
+                event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            Role role = event.optRole("role");
+            event.getTextChannel().upsertPermissionOverride(role)
+                    .setAllowed(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
+                        event.getTextChannel().sendMessage(":wave: %s".formatted(role.getAsMention())).queue();
+                    });
+
+            event.reply("Added %s.".formatted(role.getAsMention())).setEphemeral(true).queue();
+        }
+    }
+
+    public static class RemoveRoleTicketSubCommand extends SlashCommand {
+        public RemoveRoleTicketSubCommand() {
+            this.name = "remove-role";
+            this.help = "Removes a role to the current ticket";
+            this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
+            this.options = List.of(
+                    new OptionData(OptionType.ROLE, "role", "The role to remove", true)
+            );
+        }
+
+        @Override
+        protected void execute(SlashCommandEvent event) {
+            if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
+                event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            Role role = event.optRole("role");
+            event.getTextChannel().upsertPermissionOverride(role)
+                    .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
+                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(role.getAsMention())).queue();
+                    });
+
+            event.reply("Removed %s.".formatted(role.getAsMention())).setEphemeral(true).queue();
+        }
+    }
+
     public static class SetTicketTypeSubCommand extends SlashCommand {
         public SetTicketTypeSubCommand() {
-            this.name = "set-ticket-type";
+            this.name = "set-type";
             this.help = "Sets the current ticket type";
 
             this.options = List.of(

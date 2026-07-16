@@ -114,7 +114,10 @@ java {
 }
 
 sentry {
-    includeSourceContext = System.getenv("SENTRY_AUTH_TOKEN") != null
+    // The CI workflow always sets SENTRY_AUTH_TOKEN, so it is an empty string
+    // (not null) when the secret is missing - only bundle sources when a
+    // token is actually provided.
+    includeSourceContext = System.getenv("SENTRY_AUTH_TOKEN") != null && !System.getenv("SENTRY_AUTH_TOKEN").isEmpty()
 
     org = "geysermc"
     projectName = "geyserdiscordbot"

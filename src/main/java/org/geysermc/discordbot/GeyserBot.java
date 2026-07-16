@@ -277,6 +277,8 @@ public class GeyserBot {
                 }
             }
         }, 5, TimeUnit.SECONDS);
+
+        jda.getPresence().setActivity(null);
     }
 
     public static JDA getJDA() {

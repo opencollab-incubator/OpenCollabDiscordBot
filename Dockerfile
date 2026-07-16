@@ -11,7 +11,7 @@ USER app:app
 
 WORKDIR /opt/app
 
-COPY build/libs/GeyserBot.jar GeyserBot.jar
+COPY build/libs/OpenCollabBot.jar OpenCollabBot.jar
 
 EXPOSE 8000
 
@@ -23,4 +23,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=10s \
         echo Fail && exit 2\
     )"]
 
-CMD ["java", "-jar", "GeyserBot.jar"]
+CMD ["java", "-jar", "OpenCollabBot.jar"]

@@ -24,7 +24,7 @@ jobs:
         with:
           setup-java_java-version: 21
 
-      - name: Build GeyserBot
+      - name: Build OpenCollabBot
         run: ./gradlew build
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -33,8 +33,8 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: GeyserBot
-          path: build/libs/GeyserBot.jar
+          name: OpenCollabBot
+          path: build/libs/OpenCollabBot.jar
 
       # Docker image build
       - name: Fix Docker environment variables

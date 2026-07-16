@@ -277,21 +277,6 @@ public class GeyserBot {
                 }
             }
         }, 5, TimeUnit.SECONDS);
-
-        List<String> messages = List.of(
-                "Building Minecraft open source software.",
-                "Collaborating to improve OSS!",
-                "Supporting creators with open tools, sustained by collaboration."
-        );
-
-        AtomicInteger msgIndex = new AtomicInteger();
-
-        generalThreadPool.scheduleAtFixedRate(() -> {
-            jda.getPresence().setActivity(Activity.playing(messages.get(msgIndex.get())));
-            if (msgIndex.incrementAndGet() == messages.size()) {
-                msgIndex.set(0);
-            }
-        }, 5, 60 * 5, TimeUnit.SECONDS);
     }
 
     public static JDA getJDA() {

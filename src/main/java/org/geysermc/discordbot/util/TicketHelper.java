@@ -29,6 +29,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -51,6 +52,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -91,6 +93,19 @@ public class TicketHelper {
         }
 
         return false;
+    }
+
+    public static boolean canManageTicket(Member member, GuildChannel c) {
+        if (!isTicketChannel(c)) return false;
+
+        TextChannel channel = (TextChannel) c;
+        TicketMetadata metadata = getTicketMetadata(channel);
+        if (metadata == null) return false;
+        Role role = c.getGuild().getRoleById(metadata.clientRoleId());
+        List<Role> validRoles = new ArrayList<>();
+        validRoles.add(role);
+        validRoles.addAll(ServerSettings.getTicketAllowedRoles(c.getGuild()));
+        return member.getUnsortedRoles().stream().anyMatch(validRoles::contains);
     }
 
     public static void closeTicket(GuildChannel channel, Member member) {

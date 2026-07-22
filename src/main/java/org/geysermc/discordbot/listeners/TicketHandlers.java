@@ -29,6 +29,8 @@ import org.geysermc.discordbot.util.ticket.TicketType;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,63 +112,70 @@ public class TicketHandlers {
             }
 
             action.queue(channel -> {
-                TicketHelper.initTicket(channel, ticketData);
+                try {
+                    TicketHelper.initTicket(channel, ticketData);
 
-                TicketHelper.logTicketAction(
-                        channel,
-                        "Created ticket.\n" +
-                                "- User: @" + event.getUser().getName() + " (ID: " + event.getUser().getId() + ")\n" +
-                                "- Client: @" + ticketData.clientRole().getName() + " (ID: " + ticketData.clientRole().getId() + ")\n" +
-                                "- Allowed Roles: " + (roleNames.isEmpty() ? "None" : String.join(", ", roleNames)) + "\n" +
-                                "- Channel ID: " + channel.getId() + "\n" +
-                                "- Type: " + ticketData.type().name()
+                    TicketHelper.logTicketAction(
+                            channel,
+                            "Created ticket.\n" +
+                                    "- User: @" + event.getUser().getName() + " (ID: " + event.getUser().getId() + ")\n" +
+                                    "- Client: @" + ticketData.clientRole().getName() + " (ID: " + ticketData.clientRole().getId() + ")\n" +
+                                    "- Allowed Roles: " + (roleNames.isEmpty() ? "None" : String.join(", ", roleNames)) + "\n" +
+                                    "- Channel ID: " + channel.getId() + "\n" +
+                                    "- Type: " + ticketData.type().name()
 
-                );
+                    );
 
-                ActionRow row = ActionRow.of(
-                        Button.danger("ticket-close", "Close Ticket")
-                );
+                    ActionRow row = ActionRow.of(
+                            Button.danger("ticket-close", "Close Ticket")
+                    );
 
-                StringBuilder builder = new StringBuilder();
+                    StringBuilder builder = new StringBuilder();
 
-                if (ticketData.type().options().pingRoles()) {
-                    List<String> pings = new ArrayList<>();
+                    if (ticketData.type().options().pingRoles()) {
+                        List<String> pings = new ArrayList<>();
 
-                    for (Role pingedRole : ServerSettings.getTicketPingedRoles(event.getGuild())) {
-                        pings.add(pingedRole.getAsMention());
+                        for (Role pingedRole : ServerSettings.getTicketPingedRoles(event.getGuild())) {
+                            pings.add(pingedRole.getAsMention());
+                        }
+
+                        builder.append(String.join(" ", pings));
                     }
 
-                    builder.append(String.join(" ", pings));
+                    channel.sendMessage(builder.toString())
+                            .setEmbeds(new EmbedBuilder()
+                                    .setTitle("Ticket created!")
+                                    .setDescription("Please describe your issue and be patient while we get back to you!")
+                                    .setColor(BotColors.SUCCESS.getColor())
+                                    .build())
+                            .setComponents(row)
+                            .queue(message -> {
+                                if (!DateUtils.isWeekday()) {
+                                    message.replyEmbeds(new EmbedBuilder()
+                                            .setTitle("Warning!")
+                                            .setDescription("You've made a ticket on the weekend, there is no guarantee we will get back to you in a timely manner.")
+                                            .setColor(BotColors.WARNING.getColor())
+                                            .build()).queue();
+                                } else if (!DateUtils.isWorkingHours()) {
+                                    message.replyEmbeds(new EmbedBuilder()
+                                            .setTitle("Warning!")
+                                            .setDescription("You've made a ticket outside of UK working hours, there is no guarantee we will get back to you in a timely manner.")
+                                            .setColor(BotColors.WARNING.getColor())
+                                            .build()).queue();
+                                } else if (DateUtils.isHoliday()) {
+                                    message.replyEmbeds(new EmbedBuilder()
+                                            .setTitle("Warning!")
+                                            .setDescription("You've made a ticket on a UK holiday, there is no guarantee we will get back to you in a timely manner.")
+                                            .setColor(BotColors.WARNING.getColor())
+                                            .build()).queue();
+                                }
+                            });
+                } catch (Exception e) {
+                    StringWriter writer = new StringWriter();
+                    PrintWriter printWriter = new PrintWriter(writer);
+                    e.printStackTrace(printWriter);
+                    channel.sendMessage("Something went wrong! " + writer.toString()).queue();
                 }
-
-                channel.sendMessage(builder.toString())
-                        .setEmbeds(new EmbedBuilder()
-                                .setTitle("Ticket created!")
-                                .setDescription("Please describe your issue and be patient while we get back to you!")
-                                .setColor(BotColors.SUCCESS.getColor())
-                                .build())
-                        .setComponents(row)
-                        .queue(message -> {
-                            if (!DateUtils.isWeekday()) {
-                                message.replyEmbeds(new EmbedBuilder()
-                                        .setTitle("Warning!")
-                                        .setDescription("You've made a ticket on the weekend, there is no guarantee we will get back to you in a timely manner.")
-                                        .setColor(BotColors.WARNING.getColor())
-                                        .build()).queue();
-                            } else if (!DateUtils.isWorkingHours()) {
-                                message.replyEmbeds(new EmbedBuilder()
-                                        .setTitle("Warning!")
-                                        .setDescription("You've made a ticket outside of UK working hours, there is no guarantee we will get back to you in a timely manner.")
-                                        .setColor(BotColors.WARNING.getColor())
-                                        .build()).queue();
-                            } else if (DateUtils.isHoliday()) {
-                                message.replyEmbeds(new EmbedBuilder()
-                                        .setTitle("Warning!")
-                                        .setDescription("You've made a ticket on a UK holiday, there is no guarantee we will get back to you in a timely manner.")
-                                        .setColor(BotColors.WARNING.getColor())
-                                        .build()).queue();
-                            }
-                        });
             });
 
             methodCall.apply(new EmbedBuilder()

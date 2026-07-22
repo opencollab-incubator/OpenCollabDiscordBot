@@ -48,7 +48,6 @@ public class TicketCommand extends SlashCommand {
         this.hidden = true;
         this.help = "Help tool to manage tickets.";
         this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
-        this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
         this.children = new SlashCommand[] {
                 new CloseTicketSubCommand(),
                 new AddUserTicketSubCommand(),
@@ -76,6 +75,10 @@ public class TicketCommand extends SlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             TicketHelper.closeTicket(event.getGuildChannel(), event.getMember());
         }
     }
@@ -94,6 +97,10 @@ public class TicketCommand extends SlashCommand {
         protected void execute(SlashCommandEvent event) {
             if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
             }
 
             Member member = event.optMember("member");
@@ -122,6 +129,10 @@ public class TicketCommand extends SlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             Member member = event.optMember("member");
             event.getTextChannel().upsertPermissionOverride(member)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
@@ -146,6 +157,10 @@ public class TicketCommand extends SlashCommand {
         protected void execute(SlashCommandEvent event) {
             if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
             }
 
             Role role = event.optRole("role");
@@ -174,6 +189,10 @@ public class TicketCommand extends SlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
@@ -200,6 +219,10 @@ public class TicketCommand extends SlashCommand {
         protected void execute(@NotNull SlashCommandEvent event) {
             if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
             }
 
             TicketMetadata metadata = TicketHelper.getTicketMetadata(event.getTextChannel());

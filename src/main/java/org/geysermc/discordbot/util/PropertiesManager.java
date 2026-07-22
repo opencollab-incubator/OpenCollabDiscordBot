@@ -26,6 +26,7 @@
 package org.geysermc.discordbot.util;
 
 import java.net.InetSocketAddress;
+import java.util.Base64;
 import java.util.Properties;
 
 public class PropertiesManager {
@@ -40,6 +41,20 @@ public class PropertiesManager {
      */
     public static String getToken() {
         return properties.getProperty("token");
+    }
+
+    /**
+     * @return Client ID from discord
+     */
+    public static String getClientId() {
+        return new String(Base64.getDecoder().decode(getToken().split("\\.")[0]));
+    }
+
+    /**
+     * @return Client secret from discord
+     */
+    public static String getClientSecret() {
+        return properties.getProperty("client_secret");
     }
 
     /**
@@ -103,6 +118,14 @@ public class PropertiesManager {
      */
     public static String getPublicWebAddress() {
         return properties.getProperty("web-public-address");
+    }
+
+    /**
+     * @return The origin the web panel frontend is served from (used for CORS and the
+     *         post-login redirect), or {@code null} if not configured yet
+     */
+    public static String getWebPanelOrigin() {
+        return properties.getProperty("web-panel-origin");
     }
 
     /**

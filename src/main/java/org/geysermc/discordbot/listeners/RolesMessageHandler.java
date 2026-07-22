@@ -36,18 +36,20 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.ticket.TicketType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class RolesMessageHandler extends ListenerAdapter {
+public class RolesMessageHandler extends Handler {
     public static final String MODAL_ID = "roles-modal";
     public static final String BUTTON_PREFIX_ID = "role-button-";
 
     @Override
     public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+        if (!shouldExecute(event.getGuild())) return;
         if (!event.getInteraction().getCustomId().startsWith(BUTTON_PREFIX_ID)) return;
 
         String roleId = event.getInteraction().getCustomId().substring(BUTTON_PREFIX_ID.length());
@@ -91,6 +93,7 @@ public class RolesMessageHandler extends ListenerAdapter {
 
     @Override
     public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+        if (!shouldExecute(event.getGuild())) return;
         String title = event.getInteraction().getValue("title").getAsString();
 
         String description = event.getInteraction().getValue("description").getAsString();
@@ -111,5 +114,10 @@ public class RolesMessageHandler extends ListenerAdapter {
                 .queue();
 
         event.reply("Sent message.").setEphemeral(true).queue();
+    }
+
+    @Override
+    public ServerModule requiredModule() {
+        return ServerModule.BUTTON_ROLES;
     }
 }

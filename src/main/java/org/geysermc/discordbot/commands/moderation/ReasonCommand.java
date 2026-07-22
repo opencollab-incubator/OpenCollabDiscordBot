@@ -36,6 +36,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.geysermc.discordbot.GeyserBot;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.storage.ModLog;
 import org.geysermc.discordbot.util.BotColors;
 
@@ -46,7 +47,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class ReasonCommand extends SlashCommand {
+public class ReasonCommand extends BotSlashCommand {
 
     public ReasonCommand() {
         this.name = "reason";
@@ -63,7 +64,7 @@ public class ReasonCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // Fetch args
         int logID = event.getOption("id").getAsInt();
         String updatedReason = event.optString("reason", null);
@@ -72,7 +73,7 @@ public class ReasonCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         MessageEmbed embed;
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 

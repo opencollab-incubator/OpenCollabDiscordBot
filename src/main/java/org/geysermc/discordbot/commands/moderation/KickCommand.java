@@ -33,6 +33,7 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
 import org.geysermc.discordbot.util.ModerationHelper;
@@ -41,7 +42,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class KickCommand extends SlashCommand {
+public class KickCommand extends BotSlashCommand {
 
     public KickCommand() {
         this.name = "kick";
@@ -59,7 +60,7 @@ public class KickCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         Member member = event.getOption("member").getAsMember();
         Member moderator = event.getMember();
         boolean silent = event.optBoolean("silent", false);
@@ -81,7 +82,7 @@ public class KickCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         // Fetch the user

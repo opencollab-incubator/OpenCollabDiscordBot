@@ -37,7 +37,7 @@ import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.modals.Modal;
 import org.geysermc.discordbot.listeners.RolesMessageHandler;
 
-public class RolesMessageCommand extends SlashCommand {
+public class RolesMessageCommand extends BotSlashCommand {
     public RolesMessageCommand() {
         this.name = "roles-message";
         this.help = "Sends a message which allows users to toggle roles";
@@ -46,7 +46,7 @@ public class RolesMessageCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         event.replyModal(Modal.create(RolesMessageHandler.MODAL_ID, "Select Roles")
                 .addComponents(
                         Label.of(

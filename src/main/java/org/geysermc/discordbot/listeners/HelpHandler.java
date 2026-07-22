@@ -43,7 +43,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class HelpHandler extends ListenerAdapter {
+public class HelpHandler extends Handler {
 
     private final Cache<User, Integer> messageCache;
 

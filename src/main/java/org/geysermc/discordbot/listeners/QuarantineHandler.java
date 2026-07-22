@@ -44,7 +44,7 @@ import javax.annotation.Nonnull;
 import java.time.Duration;
 import java.time.Instant;
 
-public class QuarantineHandler extends ListenerAdapter {
+public class QuarantineHandler extends Handler {
     @Override
     public void onStringSelectInteraction(@NotNull StringSelectInteractionEvent event) {
         if (!event.isFromGuild()) return;

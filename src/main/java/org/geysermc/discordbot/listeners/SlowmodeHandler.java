@@ -42,7 +42,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class SlowmodeHandler extends ListenerAdapter {
+public class SlowmodeHandler extends Handler {
     private final long channelId;
     private int seconds;
     private final Cache<OffsetDateTime, User> messageCache;

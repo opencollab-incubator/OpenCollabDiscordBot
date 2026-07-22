@@ -38,7 +38,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import java.awt.*;
 import java.util.Arrays;
 
-public class EchoCommand extends SlashCommand {
+public class EchoCommand extends BotSlashCommand {
     public EchoCommand() {
         this.name = "echo";
         this.hidden = true;
@@ -52,7 +52,7 @@ public class EchoCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // no-op
     }
 
@@ -64,7 +64,7 @@ public class EchoCommand extends SlashCommand {
             this.options = Arrays.asList(
                     new OptionData(OptionType.STRING, "message", "The message to send", true),
                     new OptionData(OptionType.CHANNEL, "channel", "The channel to send the message to", true)
-                            .setChannelTypes(ChannelType.TEXT),
+                            .setChannelTypes(ChannelType.TEXT, ChannelType.VOICE, ChannelType.STAGE, ChannelType.NEWS),
                     new OptionData(OptionType.STRING, "message_link", "The message to modify")
             );
         }
@@ -94,7 +94,7 @@ public class EchoCommand extends SlashCommand {
 
             this.options = Arrays.asList(
                     new OptionData(OptionType.CHANNEL, "channel", "The channel to send the message to", true)
-                            .setChannelTypes(ChannelType.TEXT),
+                            .setChannelTypes(ChannelType.TEXT, ChannelType.VOICE, ChannelType.STAGE, ChannelType.NEWS),
                     new OptionData(OptionType.STRING, "message_link", "The message to modify"),
                     new OptionData(OptionType.STRING, "title", "The title of the embed"),
                     new OptionData(OptionType.STRING, "description", "The description of the embed"),

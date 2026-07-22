@@ -34,7 +34,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 
 import java.io.IOException;
 import java.net.URL;
@@ -55,10 +55,9 @@ public class RssFeedManager {
 
     private static void initialCache() {
         for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-            for (Map.Entry<String, String> feed : ServerSettings.getMap(guild.getIdLong(), "rss-feeds").entrySet()) {
-                // If we can't get the channel skip the check
-                if (!BotHelpers.channelExists(guild, feed.getKey())) continue;
-
+            Map<String, TextChannel> urls = ServerConfiguration.RSS_FEEDS.get(guild);
+            if (urls == null) continue;
+            for (Map.Entry<String, TextChannel> feed : urls.entrySet()) {
                 cacheFeed(feed.getKey(), feed.getValue());
             }
         }
@@ -67,10 +66,10 @@ public class RssFeedManager {
     /**
      * Cache a feed url against a given channel for checking later
      *
-     * @param channel Channel id to cache against
      * @param url URL of the rss feed
+     * @param channel Channel id to cache against
      */
-    public static void cacheFeed(String channel, String url) {
+    public static void cacheFeed(String url, TextChannel channel) {
         try {
             SyndFeedInput input = new SyndFeedInput();
             SyndFeed feedData = input.build(new XmlReader(new URL(url)));
@@ -80,7 +79,7 @@ public class RssFeedManager {
                 knownPosts.add(entry.getUri());
             }
 
-            RSS_POSTS.put(channel, knownPosts);
+            RSS_POSTS.put(channel.getId(), knownPosts);
         } catch (FeedException | IOException e) {
             GeyserBot.LOGGER.error("Error caching rss feed on: " + url, e);
         }
@@ -91,11 +90,10 @@ public class RssFeedManager {
      */
     private static void checkFeeds() {
         for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-            for (Map.Entry<String, String> feed : ServerSettings.getMap(guild.getIdLong(), "rss-feeds").entrySet()) {
+            Map<String, TextChannel> urls = ServerConfiguration.RSS_FEEDS.get(guild);
+            if (urls == null) continue;
+            for (Map.Entry<String, TextChannel> feed : urls.entrySet()) {
                 try {
-                    // If we can't get the channel skip the check
-                    if (!BotHelpers.channelExists(guild, feed.getKey())) continue;
-
                     // If we don't have the feed cached then cache it and continue
                     if (!RSS_POSTS.containsKey(feed.getKey())) {
                         cacheFeed(feed.getKey(), feed.getValue());
@@ -104,19 +102,16 @@ public class RssFeedManager {
 
                     // Get the feed data
                     SyndFeedInput input = new SyndFeedInput();
-                    SyndFeed feedData = input.build(new XmlReader(new URL(feed.getValue())));
-
-                    // Cache the text channel
-                    TextChannel channel = guild.getTextChannelById(feed.getKey());
+                    SyndFeed feedData = input.build(new XmlReader(new URL(feed.getKey())));
 
                     // Get the known posts so we don't
-                    List<String> knownPosts = RSS_POSTS.get(feed.getKey());
+                    List<String> knownPosts = RSS_POSTS.get(feed.getValue().getId());
 
                     // See if there are any new posts
                     for (SyndEntry entry : feedData.getEntries()) {
                         if (knownPosts.contains(entry.getUri())) continue;
 
-                        channel.sendMessageEmbeds(new EmbedBuilder()
+                        feed.getValue().sendMessageEmbeds(new EmbedBuilder()
                                 .setTitle(entry.getTitle(), entry.getLink())
                                 .setAuthor(entry.getAuthor())
                                 .setTimestamp(entry.getPublishedDate().toInstant())
@@ -128,7 +123,7 @@ public class RssFeedManager {
                     }
 
                     // Push any changes
-                    RSS_POSTS.put(feed.getKey(), knownPosts);
+                    RSS_POSTS.put(feed.getValue().getId(), knownPosts);
                 } catch (FeedException | IOException e) {
                     GeyserBot.LOGGER.error("Error checking rss feed on: " + feed.getValue(), e);
                 }

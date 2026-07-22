@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 /**
  * Handle the help command
  */
-public class HelpCommand extends SlashCommand {
+public class HelpCommand extends BotSlashCommand {
 
     public HelpCommand() {
         this.name = "help";
@@ -50,12 +50,12 @@ public class HelpCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         event.replyEmbeds(handle("/")).queue();
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         event.getMessage().replyEmbeds(handle(PropertiesManager.getPrefix())).queue();
     }
 

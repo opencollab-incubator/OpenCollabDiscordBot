@@ -29,8 +29,9 @@ import com.jagrosh.jdautilities.command.CommandEvent;
 import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.Permission;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 
-public class RestartCommand extends SlashCommand {
+public class RestartCommand extends BotSlashCommand {
 
     public RestartCommand() {
         this.name = "restart";
@@ -39,16 +40,16 @@ public class RestartCommand extends SlashCommand {
 
         this.userMissingPermMessage = "";
 
-        this.userPermissions = new Permission[] { Permission.MANAGE_ROLES };
+        this.userPermissions = new Permission[] { Permission.MANAGE_SERVER };
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         event.reply("```\nRestarting...\n```").queue(message -> event.getJDA().shutdown());
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         event.getMessage().reply("```\nRestarting...\n```").queue(message -> event.getJDA().shutdown());
     }
 }

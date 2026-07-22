@@ -34,6 +34,8 @@ import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import org.geysermc.discordbot.commands.BotSlashCommand;
+import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.TicketHelper;
 import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.geysermc.discordbot.util.ticket.TicketType;
@@ -41,7 +43,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class TicketCommand extends SlashCommand {
+public class TicketCommand extends BotSlashCommand {
 
     public TicketCommand() {
         this.name = "ticket";
@@ -57,10 +59,11 @@ public class TicketCommand extends SlashCommand {
                 new RemoveRoleTicketSubCommand(),
                 new SetTicketTypeSubCommand()
         };
+        this.requiredModule = ServerModule.TICKETS;
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // unused
     }
 

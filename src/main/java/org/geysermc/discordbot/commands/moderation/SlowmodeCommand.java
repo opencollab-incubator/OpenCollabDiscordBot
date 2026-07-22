@@ -26,7 +26,6 @@
 package org.geysermc.discordbot.commands.moderation;
 
 import com.jagrosh.jdautilities.command.CommandEvent;
-import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -37,10 +36,12 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.GeyserBot;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.listeners.SlowmodeHandler;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
+import org.geysermc.discordbot.util.LogHelper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class SlowmodeCommand extends SlashCommand {
+public class SlowmodeCommand extends BotSlashCommand {
 
     public SlowmodeCommand() {
         this.name = "slowmode";
@@ -65,7 +66,7 @@ public class SlowmodeCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         String arg = event.getOption("args").getAsString();
 
         if (arg.isBlank()) {
@@ -81,7 +82,7 @@ public class SlowmodeCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         // Check if a time string was specified
@@ -158,7 +159,7 @@ public class SlowmodeCommand extends SlashCommand {
         }
 
         // Return the embed and send to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(slowmodeEmbed).queue();
+        LogHelper.log(guild, slowmodeEmbed);
         return slowmodeEmbed;
     }
 }

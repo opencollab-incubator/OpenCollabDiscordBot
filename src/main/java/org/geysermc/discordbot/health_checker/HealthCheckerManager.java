@@ -30,13 +30,13 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
-import org.geysermc.discordbot.util.BotHelpers;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -60,14 +60,15 @@ public class HealthCheckerManager {
         GeyserBot.getGeneralThreadPool().schedule(() -> {
             User self = GeyserBot.getJDA().getSelfUser();
             for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-                for (Map.Entry<String, String> check : ServerSettings.getMap(guild.getIdLong(), "health-checks").entrySet()) {
-                    // If we can't get the channel skip the check
-                    if (!BotHelpers.channelExists(guild, check.getKey())) continue;
-
+                TextChannel channel = ServerConfiguration.HEALTH_CHECK_CHANNEL.get(guild);
+                if (channel == null) continue;
+                List<String> urls = ServerConfiguration.HEALTH_CHECK_URLS.get(guild);
+                if (urls == null) continue;
+                for (String url : urls) {
                     boolean found = false;
 
                     // Check the last 100 messages for a health check message
-                    for (Message message : guild.getTextChannelById(check.getKey()).getHistory().retrievePast(100).complete()) {
+                    for (Message message : channel.getHistory().retrievePast(100).complete()) {
                         if (message.getAuthor() != self) {
                             continue;
                         }
@@ -78,11 +79,14 @@ public class HealthCheckerManager {
                             continue;
                         }
 
+                        MessageEmbed.Footer footer = embeds.getFirst().getFooter();
+                        if (footer != null && footer.getText() != null && !footer.getText().equals(url)) continue;
+
                         // Go over the first embed and find the status code field
                         for (MessageEmbed.Field field : embeds.get(0).getFields()) {
                             if (field.getName().equals("Status code")) {
 
-                                HEALTH_STATUS.put(check.getKey(), new HealthStatus(message, Integer.parseInt(field.getValue())));
+                                HEALTH_STATUS.put(url, new HealthStatus(message, Integer.parseInt(field.getValue())));
 
                                 found = true;
                                 break;
@@ -106,14 +110,15 @@ public class HealthCheckerManager {
      */
     private static void doChecks() {
         for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-            for (Map.Entry<String, String> check : ServerSettings.getMap(guild.getIdLong(), "health-checks").entrySet()) {
+            TextChannel channel = ServerConfiguration.HEALTH_CHECK_CHANNEL.get(guild);
+            if (channel == null) continue;
+            List<String> urls = ServerConfiguration.HEALTH_CHECK_URLS.get(guild);
+            if (urls == null) continue;
+            for (String url : urls) {
                 try {
-                    // If we can't get the channel skip the check
-                    if (!BotHelpers.channelExists(guild, check.getKey())) continue;
-
                     // Build the request check
                     Request request = new Request.Builder()
-                            .url(check.getValue())
+                            .url(url)
                             .get()
                             .build();
 
@@ -143,33 +148,34 @@ public class HealthCheckerManager {
 
                     // Get the existing message if it's the same status
                     Message message = null;
-                    HealthStatus healthStatus = HEALTH_STATUS.get(check.getKey());
+                    HealthStatus healthStatus = HEALTH_STATUS.get(url);
                     if (healthStatus != null && healthStatus.wasSuccess() == success) {
                         message = healthStatus.getMessage();
                     }
 
                     // Build the updated embed
                     MessageEmbed embed = new EmbedBuilder()
-                            .setTitle("Health check: " + check.getValue(), check.getValue())
+                            .setTitle("Health check: " + url, url)
                             .addField("Status code", String.valueOf(responseCode), false)
                             .addField("Response time", responseTime + "ms", false)
                             .addField("Response (" + responseBodyLength + ")", responseBody, false)
                             .setTimestamp(Instant.now())
                             .setColor(success ? BotColors.SUCCESS.getColor() : BotColors.FAILURE.getColor())
+                            .setFooter(url)
                             .build();
 
                     // Update or send the embed
                     if (message != null) {
                         message = message.editMessageEmbeds(embed).complete();
                     } else {
-                        message = guild.getTextChannelById(check.getKey()).sendMessageEmbeds(embed).complete();
+                        message = channel.sendMessageEmbeds(embed).complete();
                     }
 
                     // Update our cache
                     healthStatus = new HealthStatus(message, responseCode);
-                    HEALTH_STATUS.put(check.getKey(), healthStatus);
+                    HEALTH_STATUS.put(url, healthStatus);
                 } catch (Exception e) {
-                    GeyserBot.LOGGER.error("Error checking health on: " + check.getValue(), e);
+                    GeyserBot.LOGGER.error("Error checking health on: " + url, e);
                 }
             }
         }

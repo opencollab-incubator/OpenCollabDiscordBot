@@ -27,29 +27,23 @@ package org.geysermc.discordbot.listeners;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.PermissionOverride;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.attribute.ICategorizableChannel;
 import net.dv8tion.jda.api.entities.channel.attribute.IPermissionContainer;
-import net.dv8tion.jda.api.entities.channel.concrete.Category;
-import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
-import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.commands.OptionMapping;
-import net.dv8tion.jda.api.interactions.commands.OptionType;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
+import org.geysermc.discordbot.util.LogHelper;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -64,7 +58,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SwearHandler extends ListenerAdapter {
+public class SwearHandler extends Handler {
 
     private static final Pattern CLEAN_PATTERN = Pattern.compile("[^\\p{N}\\p{L} ]", Pattern.UNICODE_CHARACTER_CLASS);
     private static final Pattern NON_ASCII_PATTERN = Pattern.compile("([^\\p{ASCII}])");
@@ -213,14 +207,14 @@ public class SwearHandler extends ListenerAdapter {
                 }
 
                 // Send a log to the admin channel
-                ServerSettings.getLogChannel(message.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+                LogHelper.log(message.getGuild(), new EmbedBuilder()
                         .setTitle("Profanity removed")
                         .setDescription("**Sender:** " + message.getAuthor().getAsMention() + "\n" +
                                 "**Channel:** " + message.getChannel().getAsMention() + "\n" +
                                 "**Regex:** `" + filterPattern + "`\n" +
                                 "**Message:** " + message.getContentRaw())
                         .setColor(BotColors.FAILURE.getColor())
-                        .build()).queue();
+                        .build());
 
                 // Remove the message from filteredMessages after 5s
                 // this should be enough time for the rest of the events to fire

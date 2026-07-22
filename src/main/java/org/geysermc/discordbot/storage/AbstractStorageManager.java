@@ -31,8 +31,12 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.geysermc.discordbot.permissions.MemberPermissions;
+import org.geysermc.discordbot.permissions.RolePermissions;
+import org.geysermc.discordbot.permissions.UserPermissions;
 
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractStorageManager {
 
@@ -137,6 +141,36 @@ public abstract class AbstractStorageManager {
     public abstract void updateLog(Guild guild, int id, String reason);
 
     /**
+     * Get the level info for a given Guild Member
+     *
+     * @param user Member to get level for
+     * @return The level info from the database
+     */
+    public abstract LevelInfo getLevel(Member user);
+
+    /**
+     * Set the level data for a given Guild Member
+     * @param user Member to set the level data of
+     * @param levelInfo The data to set
+     */
+    public abstract void setLevel(Member user, LevelInfo levelInfo);
+
+    /**
+     * @see AbstractStorageManager#getLevels(long)
+     */
+    public List<LevelInfo> getLevels(Guild guild) {
+        return getLevels(guild.getIdLong());
+    }
+
+    /**
+     * Get the top 100 levels for a given guild id
+     *
+     * @param guildId The guild to get the levels for
+     * @return A list of up to 100 level info entries
+     */
+    public abstract List<LevelInfo> getLevels(long guildId);
+
+    /**
      * Get the slow mode channels for a {@link Guild}
      *
      * @param guild The Guild to get the channels for
@@ -158,4 +192,22 @@ public abstract class AbstractStorageManager {
      * @return the current ticket ID
      */
     public abstract int getAndIncrementTicketId(String clientId);
+
+    public abstract Map<User, List<Appeal>> getCurrentAppeals();
+
+    public abstract List<Appeal> getCurrentAppeals(User user);
+
+    public abstract void addAppeal(User user, Appeal appeal);
+
+    public abstract MemberPermissions[] getMemberPermissions(Member member);
+
+    public abstract RolePermissions[] getRolePermissions(Role role);
+
+    public abstract UserPermissions[] getUserPermissions(User user);
+
+    public abstract void setMemberPermissions(Member member, MemberPermissions[] permissions);
+
+    public abstract void setRolePermissions(Role role, RolePermissions[] permissions);
+
+    public abstract void setUserPermissions(User user, UserPermissions[] permissions);
 }

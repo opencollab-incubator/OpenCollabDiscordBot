@@ -27,25 +27,17 @@ package org.geysermc.discordbot.listeners;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.automod.AutoModTriggerType;
 import net.dv8tion.jda.api.events.automod.AutoModExecutionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
-import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.ModerationHelper;
 
 import javax.annotation.Nonnull;
 
-import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
-public class AutoModHandler extends ListenerAdapter {
+public class AutoModHandler extends Handler {
     private final Cache<Long, Integer> executionCache;
     private final Cache<Long, Boolean> kickCache;
 

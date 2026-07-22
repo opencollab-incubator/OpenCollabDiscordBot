@@ -27,7 +27,6 @@ package org.geysermc.discordbot.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
@@ -35,7 +34,7 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.utils.FileUpload;
 import org.apache.commons.io.FileUtils;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.ticket.TicketData;
 import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.slf4j.Logger;
@@ -50,7 +49,6 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -83,7 +81,7 @@ public class TicketHelper {
     public static boolean isTicketChannel(GuildChannel c) {
         if (!(c instanceof TextChannel channel)) return false;
 
-        List<Category> categories = ServerSettings.getTicketCategories(channel.getGuild());
+        List<Category> categories = ServerConfiguration.TICKET_CATEGORIES.get(c.getGuild());
         if (categories.isEmpty()) return false;
 
         for (Category category : categories) {
@@ -109,13 +107,13 @@ public class TicketHelper {
             return;
         }
 
-        if (!ServerSettings.isTicketArchiving(channel.getGuild())) {
+        if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(channel.getGuild())) {
             log.info("Not ticket archiving, deleting channel but not ticket data.");
             channel.delete().queue();
             return;
         }
 
-        TextChannel archiveChannel = ServerSettings.getTicketArchiveChannel(channel.getGuild());
+        TextChannel archiveChannel = ServerConfiguration.TICKET_ARCHIVE_CHANNEL.get(channel.getGuild());
         if (archiveChannel == null) {
             log.warn("No archive channel found. Not archiving.");
             channel.delete().queue();

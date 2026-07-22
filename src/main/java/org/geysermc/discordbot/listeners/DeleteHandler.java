@@ -32,7 +32,7 @@ import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.jetbrains.annotations.NotNull;
 
-public class DeleteHandler extends ListenerAdapter {
+public class DeleteHandler extends Handler {
     @Override
     public void onMessageDelete(@NotNull MessageDeleteEvent event) {
         // Get the last 10 messages in the channel and delete any that are inline replies to the deleted message

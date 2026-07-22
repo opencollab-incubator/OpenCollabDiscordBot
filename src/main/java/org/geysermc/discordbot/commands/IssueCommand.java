@@ -79,7 +79,7 @@ public class IssueCommand extends FilteredSlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         Matcher matcherIssue = ISSUE_PATTERN.matcher(event.getArgs());
 
         if (!matcherIssue.find()) {

@@ -35,7 +35,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.TimeUnit;
 
-public class SpamHandler extends ListenerAdapter {
+public class SpamHandler extends Handler {
     private final Cache<Long, Pair<Integer, Long>> messageCache;
 
     public SpamHandler() {

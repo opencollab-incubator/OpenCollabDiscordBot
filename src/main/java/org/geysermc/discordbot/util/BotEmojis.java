@@ -36,24 +36,31 @@ import java.util.stream.Collectors;
 public enum BotEmojis {
     // Platforms
     FABRIC,
-    GEYSER,
     NEOFORGE,
     PAPER,
     VELOCITY,
     VIAPROXY,
-    WATERFALL;
+    WATERFALL,
 
-    private static final EnumMap<BotEmojis, ApplicationEmoji> EMOJI_MAP = new EnumMap<>(BotEmojis.class);
+    // OC Projects
+    OPEN_COLLAB,
+    GEYSER,
+    CLOUDBURST,
+    BOAR;
+
+    private static final EnumMap<BotEmojis, Emoji> EMOJI_MAP = new EnumMap<>(BotEmojis.class);
 
     public static void init(JDA jda) {
         jda.retrieveApplicationEmojis().queue(emojis -> {
             for (BotEmojis emoji : values()) {
-                EMOJI_MAP.put(emoji, emojis.stream().filter(e -> e.getName().equals(emoji.name().toLowerCase(Locale.ROOT))).findFirst().orElse(null));
+                emojis.stream().filter(e -> e.getName().equals(emoji.name().toLowerCase(Locale.ROOT))).findFirst().ifPresent(internalEmoji -> {
+                    EMOJI_MAP.put(emoji, internalEmoji);
+                });
             }
         });
     }
 
     public Emoji get() {
-        return EMOJI_MAP.get(this);
+        return EMOJI_MAP.getOrDefault(this, Emoji.fromUnicode("❓"));
     }
 }

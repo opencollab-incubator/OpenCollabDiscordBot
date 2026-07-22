@@ -49,7 +49,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class DownloadCommand extends SlashCommand {
+public class DownloadCommand extends BotSlashCommand {
     private final DownloadOption defaultDownloadOption;
     private final Map<String, DownloadOption> optionsToRepository;
 
@@ -80,7 +80,7 @@ public class DownloadCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         String program = "geyser";
@@ -96,7 +96,7 @@ public class DownloadCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         String program = event.optString("program", "geyser");
 
         DownloadOption downloadOption = optionsToRepository.getOrDefault(program.toLowerCase(Locale.ROOT), this.defaultDownloadOption);

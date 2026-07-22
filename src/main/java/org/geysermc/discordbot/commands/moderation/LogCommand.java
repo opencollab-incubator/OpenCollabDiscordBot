@@ -37,6 +37,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.geysermc.discordbot.GeyserBot;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.storage.ModLog;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
@@ -52,7 +53,7 @@ import java.util.List;
 /**
  * TODO: Add pagination
  */
-public class LogCommand extends SlashCommand {
+public class LogCommand extends BotSlashCommand {
 
     public LogCommand() {
         this.name = "modlog";
@@ -67,7 +68,7 @@ public class LogCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // Fetch user
         User user = event.getOption("member").getAsUser();
 
@@ -75,7 +76,7 @@ public class LogCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         // Fetch the user

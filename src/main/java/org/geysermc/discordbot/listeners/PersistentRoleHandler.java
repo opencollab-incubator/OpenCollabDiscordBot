@@ -33,7 +33,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class PersistentRoleHandler extends ListenerAdapter {
+public class PersistentRoleHandler extends Handler {
     @Override
     public void onGuildMemberJoin(@NotNull GuildMemberJoinEvent event) {
         List<Role> roles = GeyserBot.storageManager.getPersistentRoles(event.getMember());

@@ -47,9 +47,10 @@ import net.dv8tion.jda.api.exceptions.ErrorResponseException;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
+import org.geysermc.discordbot.util.LogHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.Color;
@@ -60,7 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public class LogHandler extends ListenerAdapter {
+public class LogHandler extends Handler {
 
     public static final List<String> PURGED_MESSAGES = new ArrayList<>();
 
@@ -155,7 +156,7 @@ public class LogHandler extends ListenerAdapter {
 
         // Send the embed as a reply and to the log
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setTitle(actionTitle)
                     .addField("User", targetUser.getAsMention(), false)
                     .addField("Staff member", staffUser.getAsMention(), false)
@@ -163,14 +164,14 @@ public class LogHandler extends ListenerAdapter {
                     .setFooter("ID: " + id)
                     .setTimestamp(Instant.now())
                     .setColor(color)
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
     }
 
     @Override
     public void onGuildMemberJoin(@NotNull GuildMemberJoinEvent event) {
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setAuthor("Member Joined", null, event.getUser().getAvatarUrl())
                     .setDescription(event.getUser().getAsMention() + " " + event.getUser().getName())
                     .addField("Account Created", TimeFormat.RELATIVE.format(event.getUser().getTimeCreated().toInstant()), false)
@@ -178,20 +179,20 @@ public class LogHandler extends ListenerAdapter {
                     .setFooter("ID: " + event.getUser().getId())
                     .setTimestamp(Instant.now())
                     .setColor(BotColors.SUCCESS.getColor())
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
     }
 
     @Override
     public void onGuildMemberRemove(@NotNull GuildMemberRemoveEvent event) {
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setAuthor("Member Left", null, event.getUser().getAvatarUrl())
                     .setDescription(event.getUser().getAsMention() + " " + event.getUser().getName())
                     .setFooter("ID: " + event.getUser().getId())
                     .setTimestamp(Instant.now())
                     .setColor(BotColors.WARNING.getColor())
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
     }
 
@@ -201,7 +202,7 @@ public class LogHandler extends ListenerAdapter {
         if (!event.isFromGuild()) return;
 
         // Ignore non logged channels
-        if (ServerSettings.shouldNotLogChannel(event.getChannel())) {
+        if (ServerConfiguration.DONT_LOG.isOrContains(event.getChannel())) {
             return;
         }
 
@@ -214,7 +215,7 @@ public class LogHandler extends ListenerAdapter {
         Message cachedMessage = getCacheMessage(event.getGuild(), event.getMessage().getIdLong());
 
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setAuthor(event.getAuthor().getName(), null, event.getAuthor().getAvatarUrl())
                     .setDescription("**Message edited in **" + event.getChannel().getAsMention() + " [Jump to Message](" + event.getMessage().getJumpUrl() + ")")
                     .addField("Before", cachedMessage != null ? BotHelpers.trim(cachedMessage.getContentRaw(), 450) : "*Old message not cached*", false)
@@ -222,7 +223,7 @@ public class LogHandler extends ListenerAdapter {
                     .setFooter("User ID: " + event.getAuthor().getId())
                     .setTimestamp(Instant.now())
                     .setColor(BotColors.NEUTRAL.getColor())
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
 
         putCacheMessage(event.getGuild(), event.getMessage());
@@ -236,7 +237,7 @@ public class LogHandler extends ListenerAdapter {
         if (!event.isFromGuild()) return;
 
         // Ignore non logged channels
-        if (ServerSettings.shouldNotLogChannel(event.getChannel())) {
+        if (ServerConfiguration.DONT_LOG.isOrContains(event.getChannel())) {
             return;
         }
 
@@ -252,7 +253,7 @@ public class LogHandler extends ListenerAdapter {
         if (!event.isFromGuild()) return;
 
         // Don't show purged messages or non-logged channels
-        if (PURGED_MESSAGES.remove(event.getMessageId()) || ServerSettings.shouldNotLogChannel(event.getChannel())) {
+        if (PURGED_MESSAGES.remove(event.getMessageId()) || ServerConfiguration.DONT_LOG.isOrContains(event.getChannel())) {
             return;
         }
 
@@ -279,13 +280,13 @@ public class LogHandler extends ListenerAdapter {
         }
 
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setAuthor(authorTag, null, authorAvatar)
                     .setDescription("**Message sent by** " + authorMention + " **deleted in** " + event.getChannel().getAsMention() + "\n" + BotHelpers.trim(message, 900))
                     .setFooter("Author: " + authorId + " | Message ID: " + event.getMessageId())
                     .setTimestamp(Instant.now())
                     .setColor(BotColors.WARNING.getColor())
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
 
         removeCacheMessage(event.getGuild(), event.getMessageIdLong());
@@ -308,13 +309,13 @@ public class LogHandler extends ListenerAdapter {
         }
 
         try {
-            ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+            LogHelper.log(event.getGuild(), new EmbedBuilder()
                     .setAuthor(event.getMember().getUser().getName(), null, event.getMember().getUser().getAvatarUrl())
                     .setDescription(description)
                     .setFooter("ID: " + event.getMember().getId())
                     .setTimestamp(Instant.now())
                     .setColor((isJoin || isMove) ? BotColors.SUCCESS.getColor() : BotColors.FAILURE.getColor())
-                    .build()).queue();
+                    .build());
         } catch (IllegalArgumentException ignored) { }
     }
 
@@ -329,7 +330,7 @@ public class LogHandler extends ListenerAdapter {
                 Invite invite = Invite.resolve(message.getJDA(), inviteCode, true).complete();
 
                 try {
-                    ServerSettings.getLogChannel(message.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+                    LogHelper.log(message.getGuild(), new EmbedBuilder()
                             .setAuthor(message.getAuthor().getName(), null, message.getAuthor().getAvatarUrl())
                             .setDescription("**Invite posted for " + invite.getGuild().getName() + "** " + message.getChannel().getAsMention() + "\n" + invite.getUrl())
                             .addField("Inviter", invite.getInviter() != null ? invite.getInviter().getName() : "Unknown", true)
@@ -338,11 +339,15 @@ public class LogHandler extends ListenerAdapter {
                             .setFooter("ID: " + message.getAuthor().getId())
                             .setTimestamp(Instant.now())
                             .setColor(BotColors.NEUTRAL.getColor())
-                            .build()).queue();
+                            .build());
                 } catch (IllegalArgumentException ignored) { }
 
                 // Bypass for users with MESSAGE_MANAGE permission
-                if (message.getMember() != null && !message.getMember().hasPermission(Permission.MESSAGE_MANAGE) && !ServerSettings.getList(message.getGuild().getIdLong(), "allowed-invites").contains(invite.getGuild().getId())) {
+                if (
+                        message.getMember() != null &&
+                                !message.getMember().hasPermission(Permission.MESSAGE_MANAGE) &&
+                                !ServerConfiguration.ALLOWED_INVITES.isOrContains(message.getGuild(), invite.getGuild().getId())
+                ) {
                     message.delete().queue();
                 }
             } catch (ErrorResponseException ignored) { }

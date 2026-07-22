@@ -42,7 +42,7 @@ import java.time.Duration;
  */
 public class RestClient {
     public static final String JSON = "application/json; charset=utf-8";
-    public static final String USER_AGENT = "GeyserMC-DiscordBot/1.0 (JDA; +https://geysermc.org) DBots/739572267855511652";
+    public static final String USER_AGENT = "OpenCollaboration-DiscordBot/1.0 (JDA; +https://opencollaboration.dev) DBots/1523617565212016706";
 
     private static final HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -115,7 +115,7 @@ public class RestClient {
      */
     public static Response post(String url, Object data, String... headers) {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(url))
-                .POST(HttpRequest.BodyPublishers.ofString(data.toString()))
+                .POST(data == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(data.toString()))
                 .header("User-Agent", USER_AGENT)
                 .timeout(timeout);
 

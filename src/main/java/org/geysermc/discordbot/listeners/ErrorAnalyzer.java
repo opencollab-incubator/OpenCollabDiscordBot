@@ -39,7 +39,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.tags.TagsManager;
 import org.geysermc.discordbot.util.*;
 import org.imgscalr.Scalr;
@@ -59,7 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ErrorAnalyzer extends ListenerAdapter {
+public class ErrorAnalyzer extends Handler {
     private final Map<Pattern, String> logUrlPatterns;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final Pattern BRANCH_PATTERN = Pattern.compile("Geyser .* \\(git-[\\da-zA-Z]+-([\\da-zA-Z]{7})\\)");
@@ -91,7 +91,7 @@ public class ErrorAnalyzer extends ListenerAdapter {
         if (HoneyPotHandler.isHoneyPot(event.getGuild(), event.getChannel())) return;
 
         // exclude certain channels.
-        if (ServerSettings.shouldNotCheckError(event.getChannel())) {
+        if (ServerConfiguration.DONT_CHECK_ERROR.isOrContains(event.getChannel())) {
             return;
         }
 
@@ -135,14 +135,14 @@ public class ErrorAnalyzer extends ListenerAdapter {
                         BufferedImage resizedImg = Scalr.resize(bi, Scalr.Method.BALANCED, newMaxSize.width, newMaxSize.height);
                         String textFromImage = tesseract.doOCR(resizedImg);
                         // Send ocr reading to logs channel.
-                        ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+                        LogHelper.log(event.getGuild(), new EmbedBuilder()
                                 .setTitle("OCR Reading")
                                 .addField("Image link", "[Jump to Image](" + event.getJumpUrl() + ")", true)
                                 .addField("Reading", textFromImage, false)
                                 .setFooter("ID: " + event.getAuthor().getId())
                                 .setTimestamp(Instant.now())
                                 .setColor(BotColors.NEUTRAL.getColor())
-                                .build()).queue();
+                                .build());
                         errorHandler(textFromImage, embedBuilder, event);
                     } catch (TesseractException | InterruptedException | IOException | ExecutionException e) {
                         handleLog(event, e.getMessage(), true);
@@ -154,7 +154,7 @@ public class ErrorAnalyzer extends ListenerAdapter {
                 List<String> extensions;
                 // Get the guild extensions and if not in a guild just use some defaults
                 if (event.isFromGuild()) {
-                    extensions = ServerSettings.getList(event.getGuild().getIdLong(), "convert-extensions");
+                    extensions = ServerConfiguration.CONVERT_EXTENSIONS.get(event.getGuild());
                 } else {
                     extensions = new ArrayList<>();
                     extensions.add("txt");

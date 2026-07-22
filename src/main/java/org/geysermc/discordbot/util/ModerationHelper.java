@@ -30,11 +30,11 @@ import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.Channel;
-import net.dv8tion.jda.api.entities.channel.middleman.GuildMessageChannel;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import net.dv8tion.jda.api.utils.TimeFormat;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
@@ -60,15 +60,16 @@ public class ModerationHelper {
         String title;
 
         if (automatic) {
-            title = "You have been automatically timed out in " + guild.getName() + "!";
+            title = "You have been automatically timed out in all Open Collaboration servers!";
         } else {
-            title = "You have been timed out in " + guild.getName() + "!";
+            title = "You have been timed out in all Open Collaboration servers!";
         }
 
         user.getUser().openPrivateChannel().queue((channel) -> {
             MessageEmbed embed = new EmbedBuilder()
                     .setTitle(title)
                     .addField("Reason", reason, false)
+                    .addField("Source Server", guild.getName(), false)
                     .addField("Recommended Actions", "Change your Discord password, enable 2FA, and scan your computer for malware. See [Discord's article](https://support.discord.com/hc/en-us/articles/24160905919511-My-Discord-Account-was-Hacked-or-Compromised) for more info.", false)
                     .addField("Information", "If you believe this was an accident or a false flag, please reach out to a member of staff in order to get this sorted.", false)
                     .setTimestamp(Instant.now())
@@ -78,39 +79,20 @@ public class ModerationHelper {
             channel.sendMessageEmbeds(embed).queue();
         });
 
-        if (!staffMember.canInteract(user)) {
-            MessageEmbed modChatEmbed = new EmbedBuilder()
-                    .setTitle("Unactioned quarantine.")
-                    .setDescription(user.getAsMention() + " cannot be quarantined as I do not have permission to timeout the user. Please take manual action!")
-                    .setTimestamp(Instant.now())
-                    .setColor(BotColors.FAILURE.getColor())
-                    .build();
+        MessageCreateAction action;
 
-            ServerSettings.getModChannel(guild).sendMessage(
+        if (!staffMember.canInteract(user)) {
+            action = ServerConfiguration.MOD_CHANNEL.get(guild).sendMessage(
                     new MessageCreateBuilder()
                             .setContent(user.getAsMention())
-                            .setEmbeds(modChatEmbed)
+                            .setEmbeds(new EmbedBuilder()
+                                    .setTitle("Unactioned quarantine.")
+                                    .setDescription(user.getAsMention() + " cannot be quarantined as I do not have permission to timeout the user. Please take manual action!")
+                                    .setTimestamp(Instant.now())
+                                    .setColor(BotColors.FAILURE.getColor())
+                                    .build())
                             .build()
-            ).queue(message -> {
-                Role moderationRole = ServerSettings.getModRole(guild);
-                if (moderationRole != null) {
-                    message.reply(moderationRole.getAsMention())
-                            .setAllowedMentions(null) // Allows the ping, null means all confusingly
-                            .queue();
-                }
-
-                if (referenceMessage != null) {
-                    referenceMessage.forwardTo(message.getChannel()).queue(msg -> {
-                        if (deleteReferenceMessage) {
-                            referenceMessage.delete().queue(v -> {}, throwable -> {});
-                        }
-                    }, throwable -> {
-                        if (deleteReferenceMessage) {
-                            referenceMessage.delete().queue(v -> {}, throwable2 -> {});
-                        }
-                    });
-                }
-            });
+            );
 
             // Now log it!
             int id = GeyserBot.storageManager.addLog(staffMember, "quarantine", user, reason);
@@ -125,43 +107,43 @@ public class ModerationHelper {
                     .setColor(BotColors.WARNING.getColor())
                     .build();
 
-            ServerSettings.getLogChannel(guild).sendMessageEmbeds(quarantinedEmbed).queue();
+            LogHelper.log(guild, quarantinedEmbed);
 
             return;
+        } else {
+            Duration duration = Duration.ofSeconds(60 * 60 * 24 * 28); // 28 days
+            BotServers.executeFromAll(user, (member) -> member.timeoutFor(duration).queue(ignored -> {}, t -> {}));
+
+            // Send a message in the mod chat with buttons to take action
+            ActionRow row = ActionRow.of(
+                    StringSelectMenu.create("quarantine-handler")
+                            .setPlaceholder("Select an action")
+                            .addOption("Unquarantine", "unquarantine", "Unquarantine the user.")
+                            .addOption("Honey pot misuse", "honeypot-misuse", "Punish the user for misuse of the honeypot channel. (1 day timeout.)")
+                            .addOption("Compromised account", "compromised", "Ban the user for compromised account.")
+                            .addOption("Timeout (1 week)", "timeout", "Timeout the user for 1 week.")
+                            .addOption("Kick", "kick", "Kick the user.")
+                            .addOption("Ban", "ban", "Ban the user.")
+                            .build()
+            );
+
+            String timestamp = TimeFormat.RELATIVE.format(LocalDateTime.now().plusDays(28).toInstant(ZoneOffset.UTC));
+
+             action = ServerConfiguration.MOD_CHANNEL.get(guild).sendMessage(
+                    new MessageCreateBuilder()
+                            .setContent(user.getAsMention())
+                            .setEmbeds(new EmbedBuilder()
+                                    .setTitle("Quarantined user")
+                                    .setDescription(user.getAsMention() + " has been quarantined. Select an action below to take. Quarantine expires %s.".formatted(timestamp))
+                                    .setTimestamp(Instant.now())
+                                    .setColor(BotColors.FAILURE.getColor())
+                                    .build())
+                            .build()
+            ).addComponents(row);
         }
 
-        Duration duration = Duration.ofSeconds(60 * 60 * 24 * 28); // 28 days
-        user.timeoutFor(duration).queue();
-
-        // Send a message in the mod chat with buttons to take action
-        ActionRow row = ActionRow.of(
-                StringSelectMenu.create("quarantine-handler")
-                        .setPlaceholder("Select an action")
-                        .addOption("Unquarantine", "unquarantine", "Unquarantine the user.")
-                        .addOption("Honey pot misuse", "honeypot-misuse", "Punish the user for misuse of the honeypot channel. (1 day timeout.)")
-                        .addOption("Compromised account", "compromised", "Ban the user for compromised account.")
-                        .addOption("Timeout (1 week)", "timeout", "Timeout the user for 1 week.")
-                        .addOption("Kick", "kick", "Kick the user.")
-                        .addOption("Ban", "ban", "Ban the user.")
-                        .build()
-        );
-
-        String timestamp = TimeFormat.RELATIVE.format(LocalDateTime.now().plusDays(28).toInstant(ZoneOffset.UTC));
-
-        MessageEmbed modChatEmbed = new EmbedBuilder()
-                .setTitle("Quarantined user")
-                .setDescription(user.getAsMention() + " has been quarantined. Select an action below to take. Quarantine expires %s.".formatted(timestamp))
-                .setTimestamp(Instant.now())
-                .setColor(BotColors.FAILURE.getColor())
-                .build();
-
-        ServerSettings.getModChannel(guild).sendMessage(
-                new MessageCreateBuilder()
-                        .setContent(user.getAsMention())
-                        .setEmbeds(modChatEmbed)
-                        .build()
-        ).addComponents(row).queue(message -> {
-            Role moderationRole = ServerSettings.getModRole(guild);
+        action.queue(message -> {
+            Role moderationRole = ServerConfiguration.MOD_ROLE.get(guild);
             if (moderationRole != null) {
                 message.reply(moderationRole.getAsMention())
                         .setAllowedMentions(null) // Allows the ping, null means all confusingly
@@ -194,7 +176,7 @@ public class ModerationHelper {
                 .setColor(BotColors.WARNING.getColor())
                 .build();
 
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(quarantinedEmbed).queue();
+        LogHelper.log(guild, quarantinedEmbed);
     }
 
     public static MessageEmbed timeoutUser(Member member, Member moderator, Guild guild, Duration duration, boolean silent, String reason) {
@@ -224,8 +206,9 @@ public class ModerationHelper {
         if (!silent) {
             user.openPrivateChannel().queue((channel) -> {
                 EmbedBuilder embedBuilder = new EmbedBuilder()
-                        .setTitle("You have been timed out from " + guild.getName() + "!")
+                        .setTitle("You have been timed out from all Open Collaboration servers!")
                         .addField("Reason", reason, false)
+                        .addField("Source Server", guild.getName(), false)
                         .setTimestamp(Instant.now())
                         .setColor(BotColors.FAILURE.getColor());
 
@@ -236,18 +219,18 @@ public class ModerationHelper {
 
                 channel.sendMessageEmbeds(embedBuilder.build()).queue(message -> {
                     // Timeout user
-                    guild.timeoutFor(user, duration).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.timeoutFor(user, duration).reason(reason).queue(ignored -> {}, t -> {}));
                 }, throwable -> {
                     // Timeout user
-                    guild.timeoutFor(user, duration).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.timeoutFor(user, duration).reason(reason).queue(ignored -> {}, t -> {}));
                 });
             }, throwable -> {
                 // Timeout user
-                guild.timeoutFor(user, duration).reason(reason).queue();
+                BotServers.executeFromAll(guild, (server) -> server.timeoutFor(user, duration).reason(reason).queue(ignored -> {}, t -> {}));
             });
         } else {
             // Timeout user
-            guild.timeoutFor(user, duration).reason(reason).queue();
+            BotServers.executeFromAll(guild, (server) -> server.timeoutFor(user, duration).reason(reason).queue(ignored -> {}, t -> {}));
         }
 
         // Log the change
@@ -264,7 +247,7 @@ public class ModerationHelper {
                 .build();
 
         // Send the embed as a reply and to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(timedOutEmbed).queue();
+        LogHelper.log(guild, timedOutEmbed);
         return timedOutEmbed;
     }
 
@@ -295,8 +278,9 @@ public class ModerationHelper {
         if (!silent) {
             user.openPrivateChannel().queue((channel) -> {
                 EmbedBuilder embedBuilder = new EmbedBuilder()
-                        .setTitle("You have been kicked from " + guild.getName() + "!")
+                        .setTitle("You have been kicked from all Open Collaboration servers!")
                         .addField("Reason", reason, false)
+                        .addField("Source Server", guild.getName(), false)
                         .setTimestamp(Instant.now())
                         .setColor(BotColors.FAILURE.getColor());
 
@@ -307,18 +291,18 @@ public class ModerationHelper {
 
                 channel.sendMessageEmbeds(embedBuilder.build()).queue(message -> {
                     // Kick user
-                    guild.kick(user).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.kick(user).reason(reason).queue(ignored -> {}, t -> {}));
                 }, throwable -> {
                     // Kick user
-                    guild.kick(user).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.kick(user).reason(reason).queue(ignored -> {}, t -> {}));
                 });
             }, throwable -> {
                 // Kick user
-                guild.kick(user).reason(reason).queue();
+                BotServers.executeFromAll(guild, (server) -> server.kick(user).reason(reason).queue(ignored -> {}, t -> {}));
             });
         } else {
             // Kick user
-            guild.kick(user).reason(reason).queue();
+            BotServers.executeFromAll(guild, (server) -> server.kick(user).reason(reason).queue(ignored -> {}, t -> {}));
         }
 
         // Log the change
@@ -335,9 +319,9 @@ public class ModerationHelper {
                 .build();
 
         // Send the embed as a reply and to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(kickedEmbed).queue();
-        if (originChannel == null || !ServerSettings.isModChannel(guild, originChannel)) {
-            ServerSettings.getModChannel(guild).sendMessageEmbeds(kickedEmbed).queue();
+        LogHelper.log(guild, kickedEmbed);
+        if (originChannel == null || !ServerConfiguration.MOD_CHANNEL.isOrContains(guild, originChannel)) {
+            ServerConfiguration.MOD_CHANNEL.get(guild).sendMessageEmbeds(kickedEmbed).queue();
         }
         return kickedEmbed;
     }
@@ -369,8 +353,9 @@ public class ModerationHelper {
         if (!silent) {
             user.openPrivateChannel().queue((channel) -> {
                 EmbedBuilder embedBuilder = new EmbedBuilder()
-                        .setTitle("You have been banned from " + guild.getName() + "!")
+                        .setTitle("You have been banned from all Open Collaboration servers!")
                         .addField("Reason", reason, false)
+                        .addField("Source Server", guild.getName(), false)
                         .setTimestamp(Instant.now())
                         .setColor(BotColors.FAILURE.getColor());
 
@@ -381,18 +366,18 @@ public class ModerationHelper {
 
                 channel.sendMessageEmbeds(embedBuilder.build()).queue(message -> {
                     // Ban user
-                    guild.ban(user, days, TimeUnit.DAYS).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.ban(user, days, TimeUnit.DAYS).reason(reason).queue(ignored -> {}, t -> {}));
                 }, throwable -> {
                     // Ban user
-                    guild.ban(user, days, TimeUnit.DAYS).reason(reason).queue();
+                    BotServers.executeFromAll(guild, (server) -> server.ban(user, days, TimeUnit.DAYS).reason(reason).queue(ignored -> {}, t -> {}));
                 });
             }, throwable -> {
                 // Ban user
-                guild.ban(user, days, TimeUnit.DAYS).reason(reason).queue();
+                BotServers.executeFromAll(guild, (server) -> server.ban(user, days, TimeUnit.DAYS).reason(reason).queue(ignored -> {}, t -> {}));
             });
         } else {
             // Ban user
-            guild.ban(user, days, TimeUnit.DAYS).reason(reason).queue();
+            BotServers.executeFromAll(guild, (server) -> server.ban(user, days, TimeUnit.DAYS).reason(reason).queue(ignored -> {}, t -> {}));
         }
 
         // Log the change
@@ -409,9 +394,9 @@ public class ModerationHelper {
                 .build();
 
         // Send the embed as a reply and to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(bannedEmbed).queue();
-        if (originChannel == null || !ServerSettings.isModChannel(guild, originChannel)) {
-            ServerSettings.getModChannel(guild).sendMessageEmbeds(bannedEmbed).queue();
+        LogHelper.log(guild, bannedEmbed);
+        if (originChannel == null || !ServerConfiguration.MOD_CHANNEL.isOrContains(guild, originChannel)) {
+            ServerConfiguration.MOD_CHANNEL.get(guild).sendMessageEmbeds(bannedEmbed).queue();
         }
         return bannedEmbed;
     }

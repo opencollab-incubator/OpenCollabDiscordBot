@@ -21,8 +21,8 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.restaction.ChannelAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
-import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
+import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.*;
 import org.geysermc.discordbot.util.ticket.TicketData;
 import org.geysermc.discordbot.util.ticket.TicketType;
@@ -37,17 +37,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TicketHandlers {
-    public static class Create extends ListenerAdapter {
+    public static class Create extends Handler {
 
         @Override
         public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+            if (!shouldExecute(event.getGuild())) return;
             TicketType type = TicketType.getTicketType(event.getInteraction().getCustomId());
             if (type == null) return;
 
             TicketData data = getTicketData(event, type);
             if (data == null) return;
             if (data.clientRole() == null) {
-                List<Role> clientRoles = ServerSettings.getClientRoles(event.getMember());
+                List<Role> clientRoles = getClientRoles(event.getMember());
 
                 event.replyModal(Modal.create(type.buttonId() + "-client-select", "Select client")
                                 .addComponents(Label.of(
@@ -68,10 +69,11 @@ public class TicketHandlers {
 
         @Override
         public void onModalInteraction(@NotNull ModalInteractionEvent event) {
+            if (!shouldExecute(event.getGuild())) return;
             TicketType type = TicketType.getTicketType(event.getInteraction().getCustomId());
             if (type == null) return;
 
-            List<Role> clientRoles = ServerSettings.getClientRoles(event.getMember());
+            List<Role> clientRoles = getClientRoles(event.getMember());
 
             Role selectedRole = event.getGuild().getRoleById(event.getValue("client-role").getAsStringList().getFirst());
 
@@ -104,7 +106,7 @@ public class TicketHandlers {
 
             List<String> roleNames = new ArrayList<>();
 
-            for (Role role : ServerSettings.getTicketAllowedRoles(event.getGuild())) {
+            for (Role role : ServerConfiguration.TICKET_ALLOWED_ROLES.get(event.getGuild())) {
                 action = action.addPermissionOverride(role, Collections.singleton(Permission.VIEW_CHANNEL), null);
                 roleNames.add(role.getName() + "(" + role.getId() + ")");
             }
@@ -132,7 +134,7 @@ public class TicketHandlers {
                 if (ticketData.type().options().pingRoles()) {
                     List<String> pings = new ArrayList<>();
 
-                    for (Role pingedRole : ServerSettings.getTicketPingedRoles(event.getGuild())) {
+                    for (Role pingedRole : ServerConfiguration.TICKET_PING_ROLES.get(event.getGuild())) {
                         pings.add(pingedRole.getAsMention());
                     }
 
@@ -176,15 +178,15 @@ public class TicketHandlers {
         }
 
         public Category getBestCategory(@NotNull Guild guild) {
-            List<Category> categories = ServerSettings.getTicketCategories(guild);
+            List<Category> categories = ServerConfiguration.TICKET_CATEGORIES.get(guild);
 
             for (int i = 0; i < categories.size(); i++) {
                 Category category = categories.get(i);
                 if (category.getChannels().size() == 50) continue;
 
                 if (i == categories.size() - 1 && category.getChannels().size() >= 40) {
-                    TextChannel channel = ServerSettings.getLogChannel(guild);
-                    List<Role> roles = ServerSettings.getTicketPingedRoles(guild);
+                    TextChannel channel = ServerConfiguration.LOG_CHANNEL.get(guild);
+                    List<Role> roles = ServerConfiguration.TICKET_PING_ROLES.get(guild);
                     channel.sendMessage(roles.stream().map(Role::getAsMention).collect(Collectors.joining(", ")) + " Ticket category is getting full!").queue();
                 }
 
@@ -195,7 +197,7 @@ public class TicketHandlers {
         }
 
         public TicketData getTicketData(@NotNull ButtonInteractionEvent event, TicketType type) {
-            List<Role> clientRoles = ServerSettings.getClientRoles(event.getMember());
+            List<Role> clientRoles = getClientRoles(event.getMember());
 
             if (clientRoles.isEmpty()) {
                 event.reply("You are not an Open Collaboration client.").setEphemeral(true).queue();
@@ -207,21 +209,30 @@ public class TicketHandlers {
                 return new TicketData(null, null, type);
             }
         }
+
+        @Override
+        public ServerModule requiredModule() {
+            return ServerModule.TICKETS;
+        }
     }
 
-    public static class Logs extends ListenerAdapter {
+    public static class Logs extends Handler {
         @Override
         public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+            if (!event.isFromGuild()) return;
+            if (!shouldExecute(event.getGuild())) return;
             commonMessageHandle(event.getMessage(), event.getMember(), event.getChannel(), "sent");
         }
 
         @Override
         public void onMessageUpdate(@NotNull MessageUpdateEvent event) {
+            if (!event.isFromGuild()) return;
+            if (!shouldExecute(event.getGuild())) return;
             commonMessageHandle(event.getMessage(), event.getMember(), event.getChannel(), "edited");
         }
 
         private void commonMessageHandle(Message message, Member member, MessageChannel c, String action) {
-            if (!ServerSettings.isTicketArchiving(member.getGuild())) return;
+            if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(member.getGuild())) return;
             if (!(c instanceof TextChannel channel)) return;
             if (!TicketHelper.isLoggedTicket(channel)) return;
 
@@ -267,17 +278,24 @@ public class TicketHandlers {
 
         @Override
         public void onMessageDelete(@NotNull MessageDeleteEvent event) {
-            if (!ServerSettings.isTicketArchiving(event.getGuild())) return;
+            if (!shouldExecute(event.getGuild())) return;
+            if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(event.getGuild())) return;
             if (!(event.getChannel() instanceof TextChannel channel)) return;
             if (!TicketHelper.isLoggedTicket(channel)) return;
 
             TicketHelper.logTicketAction(channel, "Message (ID: %s) was deleted.".formatted(event.getMessageId()));
         }
+
+        @Override
+        public ServerModule requiredModule() {
+            return ServerModule.TICKETS;
+        }
     }
 
-    public static class Action extends ListenerAdapter {
+    public static class Action extends Handler {
         @Override
         public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+            if (!shouldExecute(event.getGuild())) return;
             if (event.getInteraction().getCustomId().equals("ticket-close")) handleTicketClose(event);
         }
 
@@ -289,5 +307,22 @@ public class TicketHandlers {
 
             TicketHelper.closeTicket(channel, event.getMember());
         }
+
+        @Override
+        public ServerModule requiredModule() {
+            return ServerModule.TICKETS;
+        }
+    }
+
+    private static List<Role> getClientRoles(Member member) {
+        List<Role> guildRoles = ServerConfiguration.CLIENT_ROLES.get(member.getGuild());
+        if (guildRoles == null) return new ArrayList<>();
+
+        List<Role> memberRoles = new ArrayList<>();
+        for (Role role : member.getRoles()) {
+            if (guildRoles.contains(role)) memberRoles.add(role);
+        }
+
+        return memberRoles;
     }
 }

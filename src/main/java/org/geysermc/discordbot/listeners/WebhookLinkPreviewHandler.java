@@ -28,19 +28,19 @@ package org.geysermc.discordbot.listeners;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 
 import javax.annotation.Nonnull;
 
 // Hides link previews from webhook links in certain channels
-public class WebhookLinkPreviewHandler extends ListenerAdapter {
+public class WebhookLinkPreviewHandler extends Handler {
 
     @Override
     public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
         if (!event.isWebhookMessage()) return;
         if (!event.isFromGuild()) return;
 
-        TextChannel donationFeedsChannel = ServerSettings.getDonationFeedsChannel(event.getGuild());
+        TextChannel donationFeedsChannel = ServerConfiguration.DONATIONS_FEEDS_CHANNEL.get(event.getGuild());
         if (donationFeedsChannel == null) return;
         if (event.getChannel().getIdLong() != donationFeedsChannel.getIdLong()) return;
 

@@ -30,7 +30,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.geysermc.discordbot.GeyserBot;
 import org.jetbrains.annotations.NotNull;
 
-public class ShutdownHandler extends ListenerAdapter {
+public class ShutdownHandler extends Handler {
     @Override
     public void onShutdown(@NotNull ShutdownEvent event) {
         GeyserBot.LOGGER.info("JDA shutdown!");

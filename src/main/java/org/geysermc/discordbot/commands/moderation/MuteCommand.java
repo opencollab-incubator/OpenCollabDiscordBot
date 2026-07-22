@@ -26,7 +26,6 @@
 package org.geysermc.discordbot.commands.moderation;
 
 import com.jagrosh.jdautilities.command.CommandEvent;
-import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -34,16 +33,18 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.commands.BotSlashCommand;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
+import org.geysermc.discordbot.util.LogHelper;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MuteCommand extends SlashCommand {
+public class MuteCommand extends BotSlashCommand {
 
     public MuteCommand() {
         this.name = "mute";
@@ -61,7 +62,7 @@ public class MuteCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // Fetch users
         Member member = event.getOption("member").getAsMember();
         Member moderator = event.getMember();
@@ -74,7 +75,7 @@ public class MuteCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         // Fetch the user
@@ -179,7 +180,7 @@ public class MuteCommand extends SlashCommand {
                 .build();
 
         // Send the embed as a reply and to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(mutedEmbed).queue();
+        LogHelper.log(guild, mutedEmbed);
         return mutedEmbed;
     }
 }

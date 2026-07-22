@@ -26,10 +26,7 @@
 package org.geysermc.discordbot;
 
 import com.algolia.api.SearchClient;
-import com.jagrosh.jdautilities.command.Command;
-import com.jagrosh.jdautilities.command.CommandClientBuilder;
-import com.jagrosh.jdautilities.command.ContextMenu;
-import com.jagrosh.jdautilities.command.SlashCommand;
+import com.jagrosh.jdautilities.command.*;
 import com.jagrosh.jdautilities.commons.waiter.EventWaiter;
 import io.sentry.Sentry;
 import net.dv8tion.jda.api.JDA;
@@ -42,13 +39,16 @@ import net.dv8tion.jda.api.utils.ChunkingFilter;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.utils.messages.MessageRequest;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.health_checker.HealthCheckerManager;
+import org.geysermc.discordbot.http.WebPanelApplication;
 import org.geysermc.discordbot.listeners.*;
 import org.geysermc.discordbot.storage.AbstractStorageManager;
 import org.geysermc.discordbot.storage.SlowModeInfo;
 import org.geysermc.discordbot.storage.StorageType;
 import org.geysermc.discordbot.tags.TagsListener;
 import org.geysermc.discordbot.tags.TagsManager;
+import org.geysermc.discordbot.util.BotServers;
 import org.geysermc.discordbot.util.PropertiesManager;
 import org.geysermc.discordbot.util.RssFeedManager;
 import org.geysermc.discordbot.util.SentryEventManager;
@@ -57,25 +57,23 @@ import org.kohsuke.github.GitHubBuilder;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class GeyserBot {
     // Instance Variables
     public static final Logger LOGGER = LoggerFactory.getLogger(GeyserBot.class);
     public static final List<Command> COMMANDS;
-    public static final List<SlashCommand> SLASH_COMMANDS;
+    public static final Map<String, List<SlashCommand>> GUILD_SLASH_COMMANDS;
+    public static final List<SlashCommand> GLOBAL_SLASH_COMMANDS;
     public static final List<ContextMenu> CONTEXT_MENUS;
 
     public static AbstractStorageManager storageManager;
@@ -84,6 +82,7 @@ public class GeyserBot {
 
     private static JDA jda;
     private static GitHub github;
+    private static ConfigurableApplicationContext webPanelContext;
     private static SearchClient algolia;
 
     static {
@@ -124,7 +123,24 @@ public class GeyserBot {
             LOGGER.error("Unable to load commands", e);
         }
         COMMANDS = commands;
-        SLASH_COMMANDS = slashCommands;
+
+        GLOBAL_SLASH_COMMANDS = new ArrayList<>();
+        GUILD_SLASH_COMMANDS = new HashMap<>();
+
+        for (SlashCommand command : slashCommands) {
+            if (command instanceof BotSlashCommand botCommand) {
+                if (botCommand.getValidServers().length == 0) {
+                    GLOBAL_SLASH_COMMANDS.add(botCommand);
+                    continue;
+                }
+
+                for (BotServers servers : botCommand.getValidServers()) {
+                    GUILD_SLASH_COMMANDS.computeIfAbsent(servers.getServerId(), key -> new ArrayList<>()).add(botCommand);
+                }
+            } else {
+                GLOBAL_SLASH_COMMANDS.add(command);
+            }
+        }
 
         // Gathers all context menu items from "context_menu" package.
         List<ContextMenu> contextMenus = new ArrayList<>();
@@ -188,19 +204,22 @@ public class GeyserBot {
             System.exit(1);
         }
 
-        // Setup the main client
+        CommandClient[] clients = new CommandClient[GUILD_SLASH_COMMANDS.size() + 2];
+
+        // Setup the global command client
         CommandClientBuilder client = new CommandClientBuilder();
         client.setActivity(null);
         client.setOwnerId("0"); // No owner
         client.setPrefix(PropertiesManager.getPrefix());
         client.useHelpBuilder(false);
         client.addCommands(COMMANDS.toArray(new Command[0]));
-        client.addSlashCommands(SLASH_COMMANDS.toArray(new SlashCommand[0]));
+        client.addSlashCommands(GLOBAL_SLASH_COMMANDS.toArray(new SlashCommand[0]));
         client.addContextMenus(CONTEXT_MENUS.toArray(new ContextMenu[0]));
         client.setListener(new CommandErrorHandler());
         client.setCommandPreProcessBiFunction((event, command) -> !SwearHandler.filteredMessages.contains(event.getMessage().getIdLong()));
+        clients[0] = client.build();
 
-        // Setup the tag client
+        // Then setup the tag client, this can be global and just filtered per-server
         CommandClientBuilder tagClient = new CommandClientBuilder();
         tagClient.setActivity(null);
         tagClient.setOwnerId("0"); // No owner
@@ -212,6 +231,22 @@ public class GeyserBot {
         tagClient.setListener(new TagsListener());
         tagClient.setCommandPreProcessBiFunction((event, command) -> !SwearHandler.filteredMessages.contains(event.getMessage().getIdLong()));
         tagClient.setManualUpsert(true);
+        clients[1] = tagClient.build();
+
+        // Now setup server-specific commands
+        int index = 2;
+        for (Map.Entry<String, List<SlashCommand>> entry : GUILD_SLASH_COMMANDS.entrySet()) {
+            CommandClientBuilder guildClient = new CommandClientBuilder();
+            guildClient.forceGuildOnly(entry.getKey());
+            guildClient.setActivity(null);
+            guildClient.setOwnerId("0"); // No owner
+            guildClient.setPrefix(PropertiesManager.getPrefix());
+            guildClient.useHelpBuilder(false);
+            guildClient.addSlashCommands(entry.getValue().toArray(new SlashCommand[0]));
+            guildClient.setListener(new CommandErrorHandler());
+            guildClient.setCommandPreProcessBiFunction((event, command) -> !SwearHandler.filteredMessages.contains(event.getMessage().getIdLong()));
+            clients[index++] = guildClient.build();
+        }
 
         // Disable pings on replies
         MessageRequest.setDefaultMentionRepliedUser(false);
@@ -248,12 +283,17 @@ public class GeyserBot {
                             new HoneyPotHandler(),
                             new QuarantineHandler(),
                             new SpamHandler(),
+                            new RolesMessageHandler(),
+                            new ConfigurationModalHandler(),
                             new TicketHandlers.Create(),
                             new TicketHandlers.Action(),
                             new TicketHandlers.Logs(),
-                            new RolesMessageHandler(),
-                            client.build(),
-                            tagClient.build())
+                            new ExploitMessageHandler(),
+                            new GeyserDumpHandler(),
+                            new LevelHandler(),
+                            new PreviewHandler()
+                    )
+                    .addEventListeners((Object[]) clients)
                     .build();
         } catch (IllegalArgumentException exception) {
             LOGGER.error("Failed to initialize JDA!", exception);
@@ -262,6 +302,15 @@ public class GeyserBot {
 
         // Register listeners
         jda.addEventListener();
+
+        // Setup the web panel (Spring Boot, replaces the old raw HttpServer)
+        if (PropertiesManager.enableWeb()) {
+            try {
+                webPanelContext = WebPanelApplication.start();
+            } catch (Exception e) {
+                LOGGER.error("Failed to start the web panel!", e);
+            }
+        }
 
         // Setup the health check scheduler
         HealthCheckerManager.setup();
@@ -302,6 +351,10 @@ public class GeyserBot {
         storageManager.closeStorage();
         GeyserBot.LOGGER.info("Shutting down thread pool...");
         generalThreadPool.shutdown();
+        if (webPanelContext != null) {
+            GeyserBot.LOGGER.info("Shutting down web panel...");
+            webPanelContext.close();
+        }
         GeyserBot.LOGGER.info("Finished shutdown, exiting!");
         System.exit(0);
     }

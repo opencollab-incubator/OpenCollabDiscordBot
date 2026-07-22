@@ -26,7 +26,6 @@
 package org.geysermc.discordbot.commands.moderation;
 
 import com.jagrosh.jdautilities.command.CommandEvent;
-import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -34,16 +33,18 @@ import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.commands.BotSlashCommand;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
+import org.geysermc.discordbot.util.LogHelper;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class UnmuteCommand extends SlashCommand {
+public class UnmuteCommand extends BotSlashCommand {
 
     public UnmuteCommand() {
         this.name = "unmute";
@@ -61,7 +62,7 @@ public class UnmuteCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         // Fetch user
         Member member = event.getOption("member").getAsMember();
 
@@ -73,7 +74,7 @@ public class UnmuteCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         // Fetch the user
@@ -171,7 +172,7 @@ public class UnmuteCommand extends SlashCommand {
                 .build();
 
         // Send the embed as a reply and to the log
-        ServerSettings.getLogChannel(guild).sendMessageEmbeds(unmutedEmbed).queue();
+        LogHelper.log(guild, unmutedEmbed);
         return unmutedEmbed;
     }
 }

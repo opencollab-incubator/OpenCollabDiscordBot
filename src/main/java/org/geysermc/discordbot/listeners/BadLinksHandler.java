@@ -29,10 +29,10 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import okhttp3.RequestBody;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.DicesCoefficient;
+import org.geysermc.discordbot.util.LogHelper;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class BadLinksHandler extends ListenerAdapter {
+public class BadLinksHandler extends Handler {
     private static final Pattern DOMAIN_PATTERN = Pattern.compile("(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z0-9][A-Za-z0-9-]{0,61}[A-Za-z0-9]");
 
     @Override
@@ -61,9 +61,9 @@ public class BadLinksHandler extends ListenerAdapter {
         // Find URLs
         Matcher m = DOMAIN_PATTERN.matcher(event.getMessage().getContentRaw());
 
-        List<String> checkDomains = ServerSettings.getList(event.getGuild().getIdLong(), "check-domains");
-        List<String> bannedDomains = ServerSettings.getList(event.getGuild().getIdLong(), "banned-domains");
-        List<String> bannedIPs = ServerSettings.getList(event.getGuild().getIdLong(), "banned-ips");
+        List<String> checkDomains = ServerConfiguration.CHECK_DOMAINS.get(event.getGuild());
+        List<String> bannedDomains = ServerConfiguration.BLOCKED_DOMAINS.get(event.getGuild());
+        List<String> bannedIPs = ServerConfiguration.BLOCKED_IPS.get(event.getGuild());
 
         boolean foundMatch = false;
 
@@ -136,7 +136,7 @@ public class BadLinksHandler extends ListenerAdapter {
             }
 
             if (foundMatch) {
-                ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+                LogHelper.log(event.getGuild(), new EmbedBuilder()
                         .setAuthor(event.getAuthor().getName(), null, event.getAuthor().getAvatarUrl())
                         .setDescription("**Link removed, sent by** " + event.getAuthor().getAsMention() + " **deleted in** " + event.getChannel().getAsMention() + "\n" + event.getMessage().getContentRaw())
                         .addField("Block reason", reason, false)
@@ -144,7 +144,7 @@ public class BadLinksHandler extends ListenerAdapter {
                         .setFooter("Author: " + event.getAuthor().getId() + " | Message ID: " + event.getMessageId())
                         .setTimestamp(Instant.now())
                         .setColor(BotColors.FAILURE.getColor())
-                        .build()).queue();
+                        .build());
 
                 LogHandler.PURGED_MESSAGES.add(event.getMessageId());
 

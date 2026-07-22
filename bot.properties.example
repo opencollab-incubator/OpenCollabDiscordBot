@@ -1,5 +1,6 @@
 prefix: !
 token: discord_bot_token
+client_secret: discord_client_secret
 db-type: mysql
 db-host: 127.0.0.1
 db-database: bot
@@ -8,6 +9,10 @@ db-pass:
 web-public-address: https://bot.geysermc.org
 web-address: 127.0.0.1
 web-port: 8000
+# Origin the separate web panel frontend is served from, e.g. https://panel.geysermc.org
+# Used for CORS and as the redirect target after a successful Discord login.
+# NOTE: the Discord application's OAuth2 redirect must be set to "<web-public-address>/login/oauth2/code/discord"
+web-panel-origin: https://panel.geysermc.org
 github-token: github_oauth_token
 sentry-dsn: https://xxx@xxx.ingest.sentry.io/xxx
 sentry-env: production

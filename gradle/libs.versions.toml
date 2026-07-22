@@ -3,7 +3,7 @@ junit = "5.12.2"
 jda = "6.2.0"
 chewtils = "2.2.1"
 trove4j = "3.1.0"
-logback = "1.5.18"
+logback = "1.5.34"
 slf4j = "2.0.17"
 sentry = "8.10.0"
 json = "20250107"
@@ -16,7 +16,6 @@ prettytime = "5.0.9.Final"
 commons-net = "3.11.1"
 jsoup = "1.19.1"
 github = "1.330"
-freemarker = "2.3.34"
 batik = "1.18"
 stackparser = "1.0.0"
 rome = "2.1.0"
@@ -36,6 +35,7 @@ trove4j = { group = "net.sf.trove4j", name = "core", version.ref = "trove4j" }
 
 slf4j = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 sentry-logback = { group = "io.sentry", name = "sentry-logback", version.ref = "sentry" }
 
 json = { group = "org.json", name = "json", version.ref = "json" }
@@ -54,8 +54,6 @@ jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 github = { group = "org.kohsuke", name = "github-api", version.ref = "github" }
 
-freemarker = { group = "org.freemarker", name = "freemarker", version.ref = "freemarker" }
-
 batik-util = { group = "org.apache.xmlgraphics", name = "batik-util", version.ref = "batik" }
 batik-anim = { group = "org.apache.xmlgraphics", name = "batik-anim", version.ref = "batik" }
 batik-transcoder = { group = "org.apache.xmlgraphics", name = "batik-transcoder", version.ref = "batik" }
@@ -69,6 +67,11 @@ tess4j = { group = "net.sourceforge.tess4j", name = "tess4j", version.ref = "tes
 imgscalr = { group = "org.imgscalr", name = "imgscalr-lib", version.ref = "imgscalr" }
 
 algolia = { group = "com.algolia", name = "algoliasearch", version.ref = "algolia" }
+
+spring-restclient = { group = "org.springframework.boot", name = "spring-boot-starter-restclient" }
+spring-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }
+spring-security-oauth2-client = { group = "org.springframework.boot", name = "spring-boot-starter-security-oauth2-client" }
+spring-webmvc = { group = "org.springframework.boot", name = "spring-boot-starter-webmvc" }
 
 [plugins]
 sentry = { id = "io.sentry.jvm.gradle", version.ref = "sentry-gradle" }
@@ -102,4 +105,9 @@ ocr = [
     "tess4j",
     "imgscalr",
 ]
-
+spring = [
+    "spring-restclient",
+    "spring-security",
+    "spring-security-oauth2-client",
+    "spring-webmvc"
+]

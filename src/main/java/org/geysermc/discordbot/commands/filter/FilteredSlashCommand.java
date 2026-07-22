@@ -25,20 +25,21 @@
 
 package org.geysermc.discordbot.commands.filter;
 
-import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.listeners.SwearHandler;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
+import org.geysermc.discordbot.util.LogHelper;
 
 import java.util.regex.Pattern;
 
-public abstract class FilteredSlashCommand extends SlashCommand {
+public abstract class FilteredSlashCommand extends BotSlashCommand {
     @Override
-    protected final void execute(SlashCommandEvent event) {
+    protected final void executeCommand(SlashCommandEvent event) {
         Pattern filterPattern = null;
         for (OptionMapping option : event.getOptions()) {
             if (option.getType() != OptionType.STRING) continue;
@@ -54,14 +55,14 @@ public abstract class FilteredSlashCommand extends SlashCommand {
             if (event.getGuild() != null) {
                 String channel = event.getChannel() == null ? "Unknown" : event.getChannel().getAsMention();
 
-                ServerSettings.getLogChannel(event.getGuild()).sendMessageEmbeds(new EmbedBuilder()
+                LogHelper.log(event.getGuild(), new EmbedBuilder()
                         .setTitle("Profanity blocked command")
                         .setDescription("**Sender:** " + event.getUser().getAsMention() + "\n" +
                                 "**Channel:** " + channel + "\n" +
                                 "**Regex:** `" + filterPattern + "`\n" +
                                 "**Command:** " + event.getCommandString())
                         .setColor(BotColors.FAILURE.getColor())
-                        .build()).queue();
+                        .build());
             }
             return;
         }

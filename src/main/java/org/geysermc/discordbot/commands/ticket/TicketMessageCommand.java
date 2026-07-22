@@ -25,27 +25,29 @@
 
 package org.geysermc.discordbot.commands.ticket;
 
-import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.separator.Separator;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.interactions.InteractionContextType;
+import org.geysermc.discordbot.commands.BotSlashCommand;
+import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.ticket.TicketType;
 
-public class TicketMessageCommand extends SlashCommand {
+public class TicketMessageCommand extends BotSlashCommand {
 
     public TicketMessageCommand() {
         this.name = "ticket-message";
         this.help = "Sends the message allowing users to create tickets";
         this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
         this.userPermissions = new Permission[]{Permission.MANAGE_SERVER};
+        this.requiredModule = ServerModule.TICKETS;
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         event.getChannel().sendMessageComponents(Container.of(
                         TextDisplay.of("## Create a ticket"),
                         TextDisplay.of("To request assistance on an adopted project, please open a ticket here!"),

@@ -32,12 +32,13 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.util.BotColors;
 
 import java.awt.Color;
 import java.util.List;
 
-public class FixMutedCommand extends SlashCommand {
+public class FixMutedCommand extends BotSlashCommand {
 
     public FixMutedCommand() {
         this.name = "fixmuted";
@@ -47,7 +48,7 @@ public class FixMutedCommand extends SlashCommand {
     }
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         InteractionHook interactionHook = event.deferReply().complete();
 
         List<Role> roles = event.getGuild().getRolesByName("muted", true);

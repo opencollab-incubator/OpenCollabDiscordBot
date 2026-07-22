@@ -30,7 +30,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.geysermc.discordbot.util.BotEmojis;
 import org.jetbrains.annotations.NotNull;
 
-public class ReadyListener extends ListenerAdapter {
+public class ReadyListener extends Handler {
     @Override
     public void onReady(@NotNull ReadyEvent event) {
         BotEmojis.init(event.getJDA());

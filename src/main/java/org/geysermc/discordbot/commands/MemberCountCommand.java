@@ -40,7 +40,7 @@ import org.geysermc.discordbot.util.BotHelpers;
 import java.time.Instant;
 import java.util.Collections;
 
-public class MemberCountCommand extends SlashCommand {
+public class MemberCountCommand extends BotSlashCommand {
 
     public MemberCountCommand() {
         this.name = "membercount";
@@ -55,14 +55,14 @@ public class MemberCountCommand extends SlashCommand {
 
 
     @Override
-    protected void execute(SlashCommandEvent event) {
+    protected void executeCommand(SlashCommandEvent event) {
         Role role = event.optRole("role", null);
 
         event.replyEmbeds(handle(event.getGuild(), role)).queue();
     }
 
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         event.getMessage().replyEmbeds(handle(event.getGuild(), BotHelpers.getRole(event.getGuild(), event.getArgs()))).queue();
     }
 

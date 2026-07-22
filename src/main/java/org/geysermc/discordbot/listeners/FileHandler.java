@@ -27,29 +27,27 @@ package org.geysermc.discordbot.listeners;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.nimbusds.jose.shaded.json.JSONArray;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import okhttp3.RequestBody;
-import org.geysermc.discordbot.storage.ServerSettings;
+import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import pw.chew.chewbotcca.util.RestClient;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-public class FileHandler extends ListenerAdapter {
+public class FileHandler extends Handler {
     private final Cache<Long, Long> fileCache;
 
     public FileHandler() {
@@ -66,7 +64,7 @@ public class FileHandler extends ListenerAdapter {
 
             // Get the guild extensions and if not in a guild just use some defaults
             if (event.isFromGuild()) {
-                extensions = ServerSettings.getList(event.getGuild().getIdLong(), "convert-extensions");
+                extensions = ServerConfiguration.CONVERT_EXTENSIONS.get(event.getGuild());
             } else {
                 extensions = new ArrayList<>();
                 extensions.add("txt");
@@ -100,7 +98,7 @@ public class FileHandler extends ListenerAdapter {
                     file.put("content", content);
 
                     JSONArray files = new JSONArray();
-                    files.add(file);
+                    files.put(file);
                     body.put("files", files);
 
                     JSONObject response = RestClient.post("https://api.paste.gg/v1/pastes", body).asJSONObject();

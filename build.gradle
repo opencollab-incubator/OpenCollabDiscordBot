@@ -1,6 +1,8 @@
 plugins {
     id 'java-library'
     id 'application'
+    id 'org.springframework.boot' version '4.1.0'
+    id 'io.spring.dependency-management' version '1.1.7'
     alias libs.plugins.sentry
 }
 
@@ -58,8 +60,9 @@ dependencies {
     // Github API
     implementation libs.github
 
-    // Basic HTML templating engine
-    implementation libs.freemarker
+    // Spring (oh no)
+    implementation libs.bundles.spring
+    implementation libs.logback.classic
 
     // SVG parsing
     implementation libs.bundles.batik

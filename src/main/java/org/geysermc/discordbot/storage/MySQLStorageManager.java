@@ -33,6 +33,9 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.geysermc.discordbot.GeyserBot;
+import org.geysermc.discordbot.permissions.MemberPermissions;
+import org.geysermc.discordbot.permissions.RolePermissions;
+import org.geysermc.discordbot.permissions.UserPermissions;
 import org.geysermc.discordbot.util.PropertiesManager;
 
 import java.sql.Connection;
@@ -43,6 +46,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class MySQLStorageManager extends AbstractStorageManager {
 
@@ -58,6 +62,7 @@ public class MySQLStorageManager extends AbstractStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `preferences` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `key` VARCHAR(32), `value` TEXT NOT NULL, PRIMARY KEY(`id`), UNIQUE KEY `pref_constraint` (`server`,`key`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `persistent_roles` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `user` BIGINT NOT NULL, `role` BIGINT NOT NULL, PRIMARY KEY(`id`), UNIQUE KEY `role_constraint` (`server`,`user`,`role`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `mod_log` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `time` BIGINT NOT NULL, `user` BIGINT NOT NULL, `action` VARCHAR(32) NOT NULL, `target` BIGINT NOT NULL, `reason` TEXT NOT NULL, PRIMARY KEY(`id`));");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INT NOT NULL AUTO_INCREMENT, `server` BIGINT NOT NULL, `user` BIGINT NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, PRIMARY KEY(`id`), UNIQUE KEY `level_constraint` (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` BIGINT NOT NULL, `server` BIGINT NOT NULL, `delay` INT NOT NULL, PRIMARY KEY(`channel`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL, `id` INT NOT NULL, PRIMARY KEY(`client_id`));");
         createTables.close();
@@ -229,6 +234,52 @@ public class MySQLStorageManager extends AbstractStorageManager {
     }
 
     @Override
+    public LevelInfo getLevel(Member user) {
+        checkConnection();
+        try {
+            Statement getLevelValue = connection.createStatement();
+            ResultSet rs = getLevelValue.executeQuery("SELECT `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + user.getGuild().getId() + " AND `user`=" + user.getId() + ";");
+            if (rs.next()) {
+                return new LevelInfo(user.getIdLong(), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages"));
+            }
+
+            getLevelValue.close();
+
+            return new LevelInfo(0, 0, 0, 0);
+        } catch (SQLException ignored) { }
+
+        return null;
+    }
+
+    @Override
+    public void setLevel(Member user, LevelInfo levelInfo) {
+        checkConnection();
+        try {
+            Statement updateLevelValue = connection.createStatement();
+            updateLevelValue.executeUpdate("INSERT INTO `levels` (`server`, `user`, `level`, `xp`, `messages`) VALUES (" + user.getGuild().getId() + ", " + user.getId() + ", " + levelInfo.getLevel() + ", " + levelInfo.getXp() + ", " + levelInfo.getMessages() + ") ON DUPLICATE KEY UPDATE `level`=" + levelInfo.getLevel() + ", `xp`=" + levelInfo.getXp() + ", `messages`=" + levelInfo.getMessages() + ";");
+            updateLevelValue.close();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public List<LevelInfo> getLevels(long guildId) {
+        checkConnection();
+        List<LevelInfo> levels = new ArrayList<>();
+        try {
+            Statement getLevelValue = connection.createStatement();
+            ResultSet rs = getLevelValue.executeQuery("SELECT `user`, `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + guildId + " ORDER BY xp DESC LIMIT 100;");
+
+            while (rs.next()) {
+                levels.add(new LevelInfo(rs.getLong("user"), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages")));
+            }
+
+            getLevelValue.close();
+        } catch (SQLException ignored) { }
+
+        return levels;
+    }
+
+    @Override
     public List<SlowModeInfo> getSlowModeChannels(Guild guild) {
         checkConnection();
         List<SlowModeInfo> infos = new ArrayList<>();
@@ -285,5 +336,50 @@ public class MySQLStorageManager extends AbstractStorageManager {
         } catch (SQLException ignored) { }
 
         return id;
+    }
+
+    @Override
+    public Map<User, List<Appeal>> getCurrentAppeals() {
+        return Map.of();
+    }
+
+    @Override
+    public List<Appeal> getCurrentAppeals(User user) {
+        return List.of();
+    }
+
+    @Override
+    public void addAppeal(User user, Appeal appeal) {
+
+    }
+
+    @Override
+    public MemberPermissions[] getMemberPermissions(Member member) {
+        return new MemberPermissions[0];
+    }
+
+    @Override
+    public RolePermissions[] getRolePermissions(Role role) {
+        return new RolePermissions[0];
+    }
+
+    @Override
+    public UserPermissions[] getUserPermissions(User user) {
+        return new UserPermissions[0];
+    }
+
+    @Override
+    public void setMemberPermissions(Member member, MemberPermissions[] permissions) {
+
+    }
+
+    @Override
+    public void setRolePermissions(Role role, RolePermissions[] permissions) {
+
+    }
+
+    @Override
+    public void setUserPermissions(User user, UserPermissions[] permissions) {
+
     }
 }

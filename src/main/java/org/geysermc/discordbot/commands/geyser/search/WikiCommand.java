@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2020-2026 Open Collaboration. https://opencollaboration.dev, GeyserMC. https://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,11 +19,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @author GeyserMC
- * @link https://github.com/GeyserMC/GeyserDiscordBot
+ * @author OpenCollab, GeyserMC
+ * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.commands.search;
+package org.geysermc.discordbot.commands.geyser.search;
 
 import com.algolia.model.search.FacetFilters;
 import com.algolia.model.search.SearchParamsObject;
@@ -36,11 +36,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.commands.filter.FilteredSlashCommand;
-import org.geysermc.discordbot.util.BotColors;
-import org.geysermc.discordbot.util.DocSearchResult;
-import org.geysermc.discordbot.util.MessageHelper;
-import org.geysermc.discordbot.util.PageHelper;
-import org.geysermc.discordbot.util.PropertiesManager;
+import org.geysermc.discordbot.util.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -86,8 +82,7 @@ public class WikiCommand extends FilteredSlashCommand {
         this.name = "wiki";
         this.arguments = "<query>";
         this.help = "Search the Geyser wiki for a query";
-        this.guildOnly = false;
-        this.contexts = new InteractionContextType[0];
+        this.validServers = new BotServers[]{BotServers.GEYSER};
 
         this.options = Collections.singletonList(new OptionData(OptionType.STRING, "query", "The search query", true));
     }
@@ -124,7 +119,7 @@ public class WikiCommand extends FilteredSlashCommand {
      * @param event The CommandEvent.
      */
     @Override
-    protected void execute(CommandEvent event) {
+    protected void executeCommand(CommandEvent event) {
         String query = event.getArgs();
 
         if (query.isEmpty()) {

@@ -47,14 +47,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class LeaderboardController {
-    private static final Logger log = LoggerFactory.getLogger(LeaderboardController.class);
-
     @GetMapping("/{guildId}/leaderboard")
     public ResponseEntity<String> getLeaderboard(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal, @PathVariable String guildId) {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
-            user = GeyserBot.getJDA().getUserById(userId);
+            user = GeyserBot.getJDA().retrieveUserById(userId).complete();
         }
 
         Guild guild = GeyserBot.getJDA().getGuildById(guildId);

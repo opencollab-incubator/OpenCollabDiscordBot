@@ -81,11 +81,11 @@ public class ConfigurationModalHandler extends Handler {
                                     .split(",")));
                 } else if (configuration.getType() == Role.class) {
                     ((ServerConfiguration.Configuration<List<Role>>) configuration)
-                            .set(event.getGuild(), event.getInteraction().getValue("single-role-input").getAsMentions()
+                            .set(event.getGuild(), event.getInteraction().getValue("multi-role-input").getAsMentions()
                                     .getRoles());
                 } else if (GuildChannel.class.isAssignableFrom(configuration.getType())) {
                     ((ServerConfiguration.Configuration<List<GuildChannel>>) configuration)
-                            .set(event.getGuild(), event.getInteraction().getValue("single-channel-input").getAsMentions()
+                            .set(event.getGuild(), event.getInteraction().getValue("multi-channel-input").getAsMentions()
                                     .getChannels());
                 }
             }

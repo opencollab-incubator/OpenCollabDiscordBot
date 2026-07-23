@@ -42,6 +42,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class ModerationHelper {
     private ModerationHelper() {}
@@ -399,5 +400,27 @@ public class ModerationHelper {
             ServerConfiguration.MOD_CHANNEL.get(guild).sendMessageEmbeds(bannedEmbed).queue();
         }
         return bannedEmbed;
+    }
+
+    public static MessageEmbed revokeBan(long userId, User mod, String reason) {
+        UserSnowflake user = UserSnowflake.fromId(userId);
+
+        if (mod == null) mod = GeyserBot.getJDA().getSelfUser();
+
+        MessageEmbed unbannedEmbed = new EmbedBuilder()
+                .setTitle("Unbanned user")
+                .addField("User", user.getAsMention(), false)
+                .addField("Staff member", mod.getAsMention(), false)
+                .addField("Reason", reason, false)
+                .setTimestamp(Instant.now())
+                .setColor(BotColors.SUCCESS.getColor())
+                .build();
+
+        BotServers.executeFromAll((guild) -> {
+            LogHelper.log(guild, unbannedEmbed);
+            guild.unban(user).queue();
+        });
+
+        return unbannedEmbed;
     }
 }

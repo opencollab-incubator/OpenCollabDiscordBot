@@ -43,7 +43,7 @@ public class ErrorController {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
-            user = GeyserBot.getJDA().getUserById(userId);
+            user = GeyserBot.getJDA().retrieveUserById(userId).complete();
         }
 
         return PageUtils.getSuccessfulResponse(request, principal, new Error(user, 500, "Internal server error."));

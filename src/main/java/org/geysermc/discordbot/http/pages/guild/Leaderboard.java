@@ -67,21 +67,21 @@ public class Leaderboard extends Base {
     }
 
     private Element createCard(LevelInfo info, int place) {
-
-        Member member = null;
-        if (guild.isMember(info.getUser())) {
-            member = guild.getMember(info.getUser());
-        }
-
         String color = "#1e2939";
         if (place < COLORS.length) {
             color = COLORS[place];
         }
 
+        String backgroundClasses = "bg-gray-200 dark:bg-gray-900";
+        if (user != null && info.getUser().getId().equals(user.getId())) {
+            backgroundClasses = "bg-blue-200 dark:bg-blue-900 border-2 border-blue-300 dark:border-blue-800";
+        }
+
         String avatarLink = info.getUser().getAvatarUrl() == null
                 ? "https://cdn.discordapp.com/embed/avatars/1.png"
                 : info.getUser().getAvatarUrl();
-        return Element.div("flex max-w-md flex-col overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-900 shadow-sm")
+        return Element.div("flex max-w-md flex-col overflow-hidden rounded-xl shadow-sm")
+                .addClass(backgroundClasses)
                 .addInnerElement(
                         Element.of("div")
                                 .addClass("flex items-stretch gap-4 p-4")

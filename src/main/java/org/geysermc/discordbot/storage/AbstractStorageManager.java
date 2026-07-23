@@ -103,7 +103,21 @@ public abstract class AbstractStorageManager {
      * @param reason The reason for this if specified
      * @return The ID of the inserted moderation log
      */
-    public abstract int addLog(Member user, String action, UserSnowflake target, String reason);
+    public int addLog(Member user, String action, UserSnowflake target, String reason) {
+        return addLog(user.getUser(), user.getGuild(), action, target, reason);
+    }
+
+    /**
+     * Log a moderation event to the database
+     *
+     * @param user Discord {@link User} that created the event
+     * @param guild Guild that the event happened in
+     * @param action The action that was done
+     * @param target The {@link UserSnowflake} that was targeted
+     * @param reason The reason for this if specified
+     * @return The ID of the inserted moderation log
+     */
+    public abstract int addLog(User user, Guild guild, String action, UserSnowflake target, String reason);
 
     /**
      * Get the moderation log for a user
@@ -195,30 +209,107 @@ public abstract class AbstractStorageManager {
      */
     public abstract int getAndIncrementTicketId(String clientId);
 
+    /**
+     * Get all pending appeals, grouped by the {@link User} who submitted them
+     *
+     * @return A future that resolves to a map of user to their list of {@link Appeal}
+     */
     public abstract CompletableFuture<Map<User, List<Appeal>>> getCurrentAppeals();
 
+    /**
+     * Get all appeals submitted by a given user
+     *
+     * @param user The user to get appeals for
+     * @return List of {@link Appeal} submitted by the user
+     */
     public abstract List<Appeal> getCurrentAppeals(User user);
 
+    /**
+     * Store a new appeal for a user
+     *
+     * @param user The user the appeal belongs to
+     * @param appeal The {@link Appeal} to store
+     */
     public abstract void addAppeal(User user, Appeal appeal);
 
+    /**
+     * Get the stored permissions for a given Guild Member
+     *
+     * @param member Member to get permissions for
+     * @return The member's {@link MemberRolePermissions}, or an empty array if none are set
+     */
     public abstract MemberRolePermissions[] getMemberPermissions(Member member);
 
+    /**
+     * Get the stored permissions for a given {@link Role}
+     *
+     * @param role Role to get permissions for
+     * @return The role's {@link MemberRolePermissions}, or an empty array if none are set
+     */
     public abstract MemberRolePermissions[] getRolePermissions(Role role);
 
+    /**
+     * Get the stored permissions for a given {@link User}
+     *
+     * @param user User to get permissions for
+     * @return The user's {@link UserPermissions}, or an empty array if none are set
+     */
     public abstract UserPermissions[] getUserPermissions(User user);
 
+    /**
+     * Get the stored rank for a given {@link User}
+     *
+     * @param user User to get the rank for
+     * @return The user's {@link UserRank}, or {@link UserRank#NONE} if none is set
+     */
     public abstract UserRank getUserRank(User user);
 
+    /**
+     * Get the stored rank for a given Guild Member
+     *
+     * @param member Member to get the rank for
+     * @return The member's {@link MemberRank}, or {@link MemberRank#MEMBER} if none is set
+     */
     public abstract MemberRank getMemberRank(Member member);
 
+    /**
+     * Set the stored permissions for a given Guild Member
+     *
+     * @param member Member to set permissions for
+     * @param permissions The {@link MemberRolePermissions} to store
+     */
     public abstract void setMemberPermissions(Member member, MemberRolePermissions[] permissions);
 
+    /**
+     * Set the stored permissions for a given {@link Role}
+     *
+     * @param role Role to set permissions for
+     * @param permissions The {@link MemberRolePermissions} to store
+     */
     public abstract void setRolePermissions(Role role, MemberRolePermissions[] permissions);
 
+    /**
+     * Set the stored permissions for a given {@link User}
+     *
+     * @param user User to set permissions for
+     * @param permissions The {@link UserPermissions} to store
+     */
     public abstract void setUserPermissions(User user, UserPermissions[] permissions);
 
+    /**
+     * Set the stored rank for a given {@link User}
+     *
+     * @param user User to set the rank for
+     * @param rank The {@link UserRank} to store
+     */
     public abstract void setUserRank(User user, UserRank rank);
 
+    /**
+     * Set the stored rank for a given Guild Member
+     *
+     * @param member Member to set the rank for
+     * @param rank The {@link MemberRank} to store
+     */
     public abstract void setMemberRank(Member member, MemberRank rank);
 
     /**
@@ -245,4 +336,33 @@ public abstract class AbstractStorageManager {
      * @param tokenHash SHA-256 hash of the session token to remove
      */
     public abstract void deleteAuthSession(String tokenHash);
+
+    /**
+     * Store a ban, e.g. to have it expire automatically after a set time
+     *
+     * @param data The {@link BanData} to store
+     */
+    public abstract void addBan(BanData data);
+
+    /**
+     * Remove a stored ban, e.g. once it has expired or the user was unbanned
+     *
+     * @param userId The Discord snowflake ID of the banned user
+     */
+    public abstract void removeBan(long userId);
+
+    /**
+     * Get the stored ban for a given user
+     *
+     * @param userId The Discord snowflake ID of the banned user
+     * @return The stored {@link BanData}, or {@code null} if the user is not banned
+     */
+    public abstract BanData getBan(long userId);
+
+    /**
+     * Get all stored bans
+     *
+     * @return List of all stored {@link BanData}
+     */
+    public abstract List<BanData> getBans();
 }

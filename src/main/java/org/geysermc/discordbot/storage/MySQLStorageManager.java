@@ -72,6 +72,7 @@ public class MySQLStorageManager extends AbstractStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_ranks` (`user` BIGINT NOT NULL, `ordinal` INT NOT NULL, PRIMARY KEY(`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_ranks` (`user` BIGINT NOT NULL, `ordinal` INT NOT NULL, PRIMARY KEY(`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `auth_sessions` (`token_hash` VARCHAR(64) NOT NULL, `user` BIGINT NOT NULL, `attributes` TEXT NOT NULL, `expires_at` BIGINT NOT NULL, PRIMARY KEY(`token_hash`));");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `bans` (`user` BIGINT NOT NULL, `issued_on` BIGINT NOT NULL, `expires_at` BIGINT NOT NULL, PRIMARY KEY(`user`))");
         createTables.close();
     }
 
@@ -170,14 +171,14 @@ public class MySQLStorageManager extends AbstractStorageManager {
     }
 
     @Override
-    public int addLog(Member user, String action, UserSnowflake target, String reason) {
+    public int addLog(User user, Guild guild, String action, UserSnowflake target, String reason) {
         checkConnection();
         try {
             long time = Instant.now().getEpochSecond();
 
             try (PreparedStatement addLogEntry = connection.prepareStatement(
                     "INSERT INTO `mod_log` (`server`, `time`, `user`, `action`, `target`, `reason`) VALUES (?, ?, ?, ?, ?, ?);")) {
-                addLogEntry.setLong(1, user.getGuild().getIdLong());
+                addLogEntry.setLong(1, guild.getIdLong());
                 addLogEntry.setLong(2, time);
                 addLogEntry.setLong(3, user.getIdLong());
                 addLogEntry.setString(4, action);
@@ -188,7 +189,7 @@ public class MySQLStorageManager extends AbstractStorageManager {
 
             try (PreparedStatement getLogEntry = connection.prepareStatement(
                     "SELECT `id` FROM `mod_log` WHERE `server`=? AND `time`=? AND `user`=? AND `action`=? AND `target`=? AND `reason`=? LIMIT 1;")) {
-                getLogEntry.setLong(1, user.getGuild().getIdLong());
+                getLogEntry.setLong(1, guild.getIdLong());
                 getLogEntry.setLong(2, time);
                 getLogEntry.setLong(3, user.getIdLong());
                 getLogEntry.setString(4, action);
@@ -658,5 +659,63 @@ public class MySQLStorageManager extends AbstractStorageManager {
             deleteAuthSession.setString(1, tokenHash);
             deleteAuthSession.executeUpdate();
         } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void addBan(BanData data) {
+        checkConnection();
+        try (PreparedStatement addBan = connection.prepareStatement(
+                "INSERT INTO `bans` (`user`, `issued_on`, `expires_at`) VALUES (?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE `expires_at`=?;")) {
+            long expiresAt = data.expiryTime() == null ? -1 : data.expiryTime().getEpochSecond();
+            addBan.setLong(1, data.userId());
+            addBan.setLong(2, data.issuedOn().getEpochSecond());
+            addBan.setLong(3, expiresAt);
+            addBan.setLong(4, expiresAt);
+            addBan.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void removeBan(long userId) {
+        checkConnection();
+        try (PreparedStatement removeBan = connection.prepareStatement("DELETE FROM `bans` WHERE `user`=?;")) {
+            removeBan.setLong(1, userId);
+            removeBan.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public BanData getBan(long userId) {
+        checkConnection();
+        try (PreparedStatement getAuthSession = connection.prepareStatement(
+                "SELECT (`issued_on`, `expires_at`) FROM `bans` WHERE `user`=?;")) {
+            getAuthSession.setLong(1, userId);
+
+            try (ResultSet rs = getAuthSession.executeQuery()) {
+                if (rs.next()) {
+                    long time = rs.getLong("expires_at");
+                    return new BanData(userId, Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return null;
+    }
+
+    @Override
+    public List<BanData> getBans() {
+        checkConnection();
+        List<BanData> bans = new ArrayList<>();
+        try (PreparedStatement getAuthSession = connection.prepareStatement("SELECT * FROM `bans`;")) {
+            try (ResultSet rs = getAuthSession.executeQuery()) {
+                while (rs.next()) {
+                    long time = rs.getLong("expires_at");
+                    bans.add(new BanData(rs.getLong("user"), Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time)));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return bans;
     }
 }

@@ -211,7 +211,7 @@ public class ConfigurationCommand extends BotSlashCommand {
                                 Label.of(
                                         "Select roles:",
                                         EntitySelectMenu.create("multi-role-input", EntitySelectMenu.SelectTarget.ROLE)
-                                                .setMinValues(1)
+                                                .setMinValues(1).setMaxValues(25)
                                                 .build()
                                 )
                         );
@@ -222,7 +222,7 @@ public class ConfigurationCommand extends BotSlashCommand {
                                         "Select channels:",
                                         EntitySelectMenu.create("multi-channel-input", EntitySelectMenu.SelectTarget.CHANNEL)
                                                 .setChannelTypes(typeFromClass(channelClazz))
-                                                .setMinValues(1)
+                                                .setMinValues(1).setMaxValues(25)
                                                 .build()
                                 )
                         );
@@ -245,7 +245,7 @@ public class ConfigurationCommand extends BotSlashCommand {
                                 Label.of(
                                         "Select roles:",
                                         EntitySelectMenu.create("map-role-input", EntitySelectMenu.SelectTarget.ROLE)
-                                                .setMinValues(1)
+                                                .setMinValues(1).setMaxValues(25)
                                                 .build()
                                 )
                         );
@@ -256,7 +256,7 @@ public class ConfigurationCommand extends BotSlashCommand {
                                         "Select channels:",
                                         EntitySelectMenu.create("map-channel-input", EntitySelectMenu.SelectTarget.CHANNEL)
                                                 .setChannelTypes(typeFromClass(channelClazz))
-                                                .setMinValues(1)
+                                                .setMinValues(1).setMaxValues(25)
                                                 .build()
                                 )
                         );

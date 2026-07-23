@@ -62,7 +62,7 @@ public class Name extends Element {
 
         this.addInnerElement(nameSpan);
 
-        setVisualRank(user, guild);
+        //setVisualRank(user, guild);
     }
 
     public void setVisualRank(User user, Guild guild) {

@@ -29,6 +29,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
+import org.geysermc.discordbot.GeyserBot;
 
 import java.util.function.Consumer;
 
@@ -72,6 +73,14 @@ public enum BotServers {
         }
 
         return false;
+    }
+
+    public static void executeFromAll(Consumer<Guild> action) {
+        for (BotServers servers : values()) {
+            Guild server = GeyserBot.getJDA().getGuildById(servers.getServerId());
+            if (server == null) continue;
+            action.accept(server);
+        }
     }
 
     public static void executeFromAll(Guild guild, Consumer<Guild> action) {

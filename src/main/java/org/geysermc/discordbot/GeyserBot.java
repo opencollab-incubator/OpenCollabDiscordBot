@@ -44,14 +44,12 @@ import org.geysermc.discordbot.health_checker.HealthCheckerManager;
 import org.geysermc.discordbot.http.WebPanelApplication;
 import org.geysermc.discordbot.listeners.*;
 import org.geysermc.discordbot.storage.AbstractStorageManager;
+import org.geysermc.discordbot.storage.BanData;
 import org.geysermc.discordbot.storage.SlowModeInfo;
 import org.geysermc.discordbot.storage.StorageType;
 import org.geysermc.discordbot.tags.TagsListener;
 import org.geysermc.discordbot.tags.TagsManager;
-import org.geysermc.discordbot.util.BotServers;
-import org.geysermc.discordbot.util.PropertiesManager;
-import org.geysermc.discordbot.util.RssFeedManager;
-import org.geysermc.discordbot.util.SentryEventManager;
+import org.geysermc.discordbot.util.*;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 import org.reflections.Reflections;
@@ -63,6 +61,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -326,6 +325,16 @@ public class GeyserBot {
                 }
             }
         }, 5, TimeUnit.SECONDS);
+
+        generalThreadPool.scheduleAtFixedRate(() -> {
+            for (BanData banData : storageManager.getBans()) {
+                if (banData.expiryTime() == null) continue;
+                if (Instant.now().isAfter(banData.expiryTime())) {
+                    storageManager.removeBan(banData.userId());
+                    ModerationHelper.revokeBan(banData.userId(), null, "Ban has expired.");
+                }
+            }
+        }, 1, 1, TimeUnit.MINUTES);
 
         jda.getPresence().setActivity(null);
     }

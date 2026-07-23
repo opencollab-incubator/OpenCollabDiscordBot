@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.permissions.MemberRank;
 import org.geysermc.discordbot.permissions.MemberRolePermissions;
 import org.geysermc.discordbot.permissions.UserPermissions;
@@ -44,7 +45,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class SqliteStorageManager extends MySQLStorageManager {
 
@@ -66,6 +70,7 @@ public class SqliteStorageManager extends MySQLStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `auth_sessions` (`token_hash` VARCHAR(64) NOT NULL PRIMARY KEY, `user` INTEGER NOT NULL, `attributes` TEXT NOT NULL, `expires_at` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `bans` (`user` INTEGER NOT NULL PRIMARY KEY, `issued_on` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL);");
         createTables.close();
     }
 
@@ -146,13 +151,13 @@ public class SqliteStorageManager extends MySQLStorageManager {
     }
 
     @Override
-    public int addLog(Member user, String action, UserSnowflake target, String reason) {
+    public int addLog(User user, Guild guild, String action, UserSnowflake target, String reason) {
         try {
             long time = Instant.now().getEpochSecond();
 
             try (PreparedStatement addLogEntry = connection.prepareStatement(
                     "INSERT OR REPLACE INTO `mod_log` (`server`, `time`, `user`, `action`, `target`, `reason`) VALUES (?, ?, ?, ?, ?, ?);")) {
-                addLogEntry.setLong(1, user.getGuild().getIdLong());
+                addLogEntry.setLong(1, guild.getIdLong());
                 addLogEntry.setLong(2, time);
                 addLogEntry.setLong(3, user.getIdLong());
                 addLogEntry.setString(4, action);
@@ -163,7 +168,7 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
             try (PreparedStatement getLogEntry = connection.prepareStatement(
                     "SELECT `id` FROM `mod_log` WHERE `server`=? AND `time`=? AND `user`=? AND `action`=? AND `target`=? AND `reason`=? LIMIT 1;")) {
-                getLogEntry.setLong(1, user.getGuild().getIdLong());
+                getLogEntry.setLong(1, guild.getIdLong());
                 getLogEntry.setLong(2, time);
                 getLogEntry.setLong(3, user.getIdLong());
                 getLogEntry.setString(4, action);
@@ -443,5 +448,199 @@ public class SqliteStorageManager extends MySQLStorageManager {
             deleteAuthSession.setString(1, tokenHash);
             deleteAuthSession.executeUpdate();
         } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public CompletableFuture<Map<User, List<Appeal>>> getCurrentAppeals() {
+        return CompletableFuture.supplyAsync(() -> {
+            Map<User, List<Appeal>> appeals = new LinkedHashMap<>();
+
+            try {
+                Statement getLogEntry = connection.createStatement();
+                ResultSet rs = getLogEntry.executeQuery("SELECT `id`, `server`, `time`, `user`, `message`, `state` FROM `appeals` ORDER BY `time`;");
+
+                while (rs.next()) {
+                    Guild guild = GeyserBot.getJDA().getGuildById(rs.getString("server"));
+                    String userId = rs.getString("user");
+                    User user = GeyserBot.getJDA().getUserById(userId);
+                    if (user == null) {
+                        user = GeyserBot.getJDA().retrieveUserById(userId).complete();
+                    }
+
+                    appeals.computeIfAbsent(user, ignored -> new ArrayList<>()).add(
+                            new Appeal(Instant.ofEpochSecond(rs.getLong("time")), guild, rs.getString("message"), Appeal.State.values()[rs.getInt("state")])
+                    );
+                }
+
+                getLogEntry.close();
+            } catch (SQLException ignored) { }
+
+            return appeals;
+        });
+    }
+
+    @Override
+    public List<Appeal> getCurrentAppeals(User user) {
+        List<Appeal> appeals = new ArrayList<>();
+
+        try (PreparedStatement getLogEntry = connection.prepareStatement(
+                "SELECT `id`, `server`, `time`, `user`, `message`, `state` FROM `appeals` WHERE `user`=? ORDER BY `time`;")) {
+            getLogEntry.setLong(1, user.getIdLong());
+
+            try (ResultSet rs = getLogEntry.executeQuery()) {
+                while (rs.next()) {
+                    Guild guild = GeyserBot.getJDA().getGuildById(rs.getString("server"));
+
+                    appeals.add(new Appeal(Instant.ofEpochSecond(rs.getLong("time")), guild, rs.getString("message"), Appeal.State.values()[rs.getInt("state")]));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return appeals;
+    }
+
+    @Override
+    public void addAppeal(User user, Appeal appeal) {
+        try (PreparedStatement addAppeal = connection.prepareStatement(
+                "INSERT INTO `appeals` (`server`, `time`, `user`, `message`, `state`) VALUES (?, ?, ?, ?, ?);")) {
+            long time = appeal.creationTime().getEpochSecond();
+            addAppeal.setLong(1, appeal.appealingFrom().getIdLong());
+            addAppeal.setLong(2, time);
+            addAppeal.setLong(3, user.getIdLong());
+            addAppeal.setString(4, appeal.message());
+            addAppeal.setInt(5, appeal.state().ordinal());
+            addAppeal.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public MemberRolePermissions[] getMemberPermissions(Member member) {
+        try (PreparedStatement getPermissions = connection.prepareStatement(
+                "SELECT `permissions` FROM `member_role_permissions` WHERE `snowflake`=?;")) {
+            getPermissions.setLong(1, member.getIdLong());
+
+            try (ResultSet rs = getPermissions.executeQuery()) {
+                if (rs.next()) {
+                    return MemberRolePermissions.fromRawValue(rs.getInt("permissions"));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return new MemberRolePermissions[0];
+    }
+
+    @Override
+    public MemberRolePermissions[] getRolePermissions(Role role) {
+        try (PreparedStatement getPermissions = connection.prepareStatement(
+                "SELECT `permissions` FROM `member_role_permissions` WHERE `snowflake`=?;")) {
+            getPermissions.setLong(1, role.getIdLong());
+
+            try (ResultSet rs = getPermissions.executeQuery()) {
+                if (rs.next()) {
+                    return MemberRolePermissions.fromRawValue(rs.getInt("permissions"));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return new MemberRolePermissions[0];
+    }
+
+    @Override
+    public UserPermissions[] getUserPermissions(User user) {
+        try (PreparedStatement getPermissions = connection.prepareStatement(
+                "SELECT `permissions` FROM `user_permissions` WHERE `user`=?;")) {
+            getPermissions.setLong(1, user.getIdLong());
+
+            try (ResultSet rs = getPermissions.executeQuery()) {
+                if (rs.next()) {
+                    return UserPermissions.fromRawValue(rs.getInt("permissions"));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return new UserPermissions[0];
+    }
+
+    @Override
+    public UserRank getUserRank(User user) {
+        try (PreparedStatement getRank = connection.prepareStatement(
+                "SELECT `ordinal` FROM `user_ranks` WHERE `user`=?;")) {
+            getRank.setLong(1, user.getIdLong());
+
+            try (ResultSet rs = getRank.executeQuery()) {
+                if (rs.next()) {
+                    return UserRank.values()[rs.getInt("ordinal")];
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return UserRank.NONE;
+    }
+
+    @Override
+    public MemberRank getMemberRank(Member member) {
+        try (PreparedStatement getRank = connection.prepareStatement(
+                "SELECT `ordinal` FROM `member_ranks` WHERE `user`=?;")) {
+            getRank.setLong(1, member.getIdLong());
+
+            try (ResultSet rs = getRank.executeQuery()) {
+                if (rs.next()) {
+                    return MemberRank.values()[rs.getInt("ordinal")];
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return MemberRank.MEMBER;
+    }
+
+    @Override
+    public void addBan(BanData data) {
+        try (PreparedStatement addBan = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `bans` (`user`, `issued_on`, `expires_at`) VALUES (?, ?, ?);")) {
+            addBan.setLong(1, data.userId());
+            addBan.setLong(2, data.issuedOn().getEpochSecond());
+            addBan.setLong(3, data.expiryTime() == null ? -1 : data.expiryTime().getEpochSecond());
+            addBan.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void removeBan(long userId) {
+        try (PreparedStatement removeBan = connection.prepareStatement("DELETE FROM `bans` WHERE `user`=?;")) {
+            removeBan.setLong(1, userId);
+            removeBan.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public BanData getBan(long userId) {
+        try (PreparedStatement getBan = connection.prepareStatement(
+                "SELECT (`issued_on`, `expires_at`) FROM `bans` WHERE `user`=?;")) {
+            getBan.setLong(1, userId);
+
+            try (ResultSet rs = getBan.executeQuery()) {
+                if (rs.next()) {
+                    long time = rs.getLong("expires_at");
+                    return new BanData(userId, Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return null;
+    }
+
+    @Override
+    public List<BanData> getBans() {
+        List<BanData> bans = new ArrayList<>();
+        try (PreparedStatement getBans = connection.prepareStatement("SELECT * FROM `bans`;")) {
+            try (ResultSet rs = getBans.executeQuery()) {
+                while (rs.next()) {
+                    long time = rs.getLong("expires_at");
+                    bans.add(new BanData(rs.getLong("user"), Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time)));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return bans;
     }
 }

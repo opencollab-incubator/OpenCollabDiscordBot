@@ -39,6 +39,7 @@ import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.BotHelpers;
 import org.geysermc.discordbot.util.LogHelper;
+import org.geysermc.discordbot.util.ModerationHelper;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -149,24 +150,6 @@ public class UnbanCommand extends BotSlashCommand {
                             .build()).queue(message -> {}, throwable -> {}), throwable -> {});
         }
 
-        // Unban user
-        guild.unban(user).queue();
-
-        // Log the change
-        int id = GeyserBot.storageManager.addLog(mod, "unban", user, reason);
-
-        MessageEmbed unbannedEmbed = new EmbedBuilder()
-                .setTitle("Unbanned user")
-                .addField("User", user.getAsMention(), false)
-                .addField("Staff member", mod.getAsMention(), false)
-                .addField("Reason", reason, false)
-                .setFooter("ID: " + id)
-                .setTimestamp(Instant.now())
-                .setColor(BotColors.SUCCESS.getColor())
-                .build();
-
-        // Send the embed as a reply and to the log
-        LogHelper.log(guild, unbannedEmbed);
-        return unbannedEmbed;
+        return ModerationHelper.revokeBan(user.getIdLong(), mod.getUser(), reason);
     }
 }

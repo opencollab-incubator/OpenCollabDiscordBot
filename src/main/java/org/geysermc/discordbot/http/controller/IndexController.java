@@ -49,7 +49,7 @@ public class IndexController {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
-            user = GeyserBot.getJDA().getUserById(userId);
+            user = GeyserBot.getJDA().retrieveUserById(userId).complete();
         }
 
         return PageUtils.getSuccessfulResponse(request, principal, new Index(user, loginError, logout));

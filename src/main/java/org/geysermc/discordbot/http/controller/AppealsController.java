@@ -26,13 +26,11 @@
 package org.geysermc.discordbot.http.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.http.PageUtils;
-import org.geysermc.discordbot.util.BotHelpers;
-import org.geysermc.discordbot.util.BotServers;
-import org.springframework.http.MediaType;
+import org.geysermc.discordbot.http.pages.Error;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -40,9 +38,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 public class AppealsController {
@@ -51,7 +46,41 @@ public class AppealsController {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
+            user = GeyserBot.getJDA().retrieveUserById(userId).complete();
+        }
+
+        if (user == null) {
+            return PageUtils.getResponse(request, principal, new Error(null, HttpStatus.UNAUTHORIZED.value(), "You must be logged in to view this page."), HttpStatus.UNAUTHORIZED);
+        }
+
+        return null;
+    }
+
+    @GetMapping("/appeals/create")
+    public ResponseEntity<String> create(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal) throws IOException {
+        User user = null;
+        if (principal != null) {
+            String userId = principal.getAttribute("id");
             user = GeyserBot.getJDA().getUserById(userId);
+        }
+
+        if (user == null) {
+            return PageUtils.getResponse(request, principal, new Error(null, HttpStatus.UNAUTHORIZED.value(), "You must be logged in to view this page."), HttpStatus.UNAUTHORIZED);
+        }
+
+        return null;
+    }
+
+    @GetMapping("/appeals/manage")
+    public ResponseEntity<String> manage(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal) throws IOException {
+        User user = null;
+        if (principal != null) {
+            String userId = principal.getAttribute("id");
+            user = GeyserBot.getJDA().getUserById(userId);
+        }
+
+        if (user == null) {
+            return PageUtils.getResponse(request, principal, new Error(null, HttpStatus.UNAUTHORIZED.value(), "You must be logged in to view this page."), HttpStatus.UNAUTHORIZED);
         }
 
         return null;

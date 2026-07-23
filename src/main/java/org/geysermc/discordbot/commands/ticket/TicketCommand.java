@@ -154,7 +154,9 @@ public class TicketCommand extends BotSlashCommand {
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setAllowed(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":wave: %s".formatted(role.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":wave: %s".formatted(role.getAsMention()))
+                                .setAllowedMentions(List.of())
+                                .queue();
                     });
 
             event.reply("Added %s.".formatted(role.getAsMention())).setEphemeral(true).queue();
@@ -180,7 +182,8 @@ public class TicketCommand extends BotSlashCommand {
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(role.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(role.getAsMention()))
+                                .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Removed %s.".formatted(role.getAsMention())).setEphemeral(true).queue();

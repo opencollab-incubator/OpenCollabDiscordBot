@@ -26,6 +26,7 @@
 package org.geysermc.discordbot.http.config;
 
 import org.geysermc.discordbot.util.PropertiesManager;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -34,26 +35,16 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 
-/**
- * Registers Discord as an OAuth2 client. Discord isn't one of Spring Boot's
- * "common providers" (Google/GitHub/Okta/...), so the {@link ClientRegistration}
- * is built by hand instead of via {@code application.yml} binding.
- */
 @Configuration
 public class DiscordOAuth2Config {
-
-    public static final String REGISTRATION_ID = "discord";
-
     @Bean
     public ClientRegistrationRepository clientRegistrationRepository() {
-        ClientRegistration discord = ClientRegistration.withRegistrationId(REGISTRATION_ID)
+        ClientRegistration discord = ClientRegistration.withRegistrationId("discord")
                 .clientId(PropertiesManager.getClientId())
                 .clientSecret(PropertiesManager.getClientSecret())
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                // Must exactly match a redirect registered on the Discord application -
-                // update it there to "<web-public-address>/login/oauth2/code/discord".
-                .redirectUri(PropertiesManager.getPublicWebAddress() + "/login/oauth2/code/" + REGISTRATION_ID)
+                .redirectUri(PropertiesManager.getPublicWebAddress() + "/login/oauth2/code/discord")
                 .scope("identify")
                 .authorizationUri("https://discord.com/api/oauth2/authorize")
                 .tokenUri("https://discord.com/api/oauth2/token")
@@ -62,10 +53,6 @@ public class DiscordOAuth2Config {
                 .clientName("Discord")
                 .build();
 
-        // TODO: this in-memory repository (and the default HttpSessionOAuth2AuthorizedClientRepository
-        //  used to store the resulting access/refresh tokens) both live only as long as the JVM/session.
-        //  If the panel needs to survive restarts or run as more than one instance, both need to be
-        //  swapped for persistent (database-backed) implementations.
         return new InMemoryClientRegistrationRepository(discord);
     }
 }

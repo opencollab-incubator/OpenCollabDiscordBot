@@ -34,12 +34,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PermissionManager {
-    public static boolean hasPermission(Member member, MemberPermissions permission) {
+    public static boolean hasPermission(Member member, MemberRolePermissions permission) {
         if (member.isOwner()) return true;
-        return List.of(GeyserBot.storageManager.getMemberPermissions(member)).contains(permission);
+        if (List.of(GeyserBot.storageManager.getMemberPermissions(member)).contains(permission)) return true;
+        for (Role role : member.getUnsortedRoles()) {
+            if (hasPermission(role, permission)) return true;
+        }
+        return false;
     }
 
-    public static boolean hasPermission(Role role, RolePermissions permission) {
+    public static boolean hasPermission(Role role, MemberRolePermissions permission) {
         return List.of(GeyserBot.storageManager.getRolePermissions(role)).contains(permission);
     }
 
@@ -47,18 +51,18 @@ public class PermissionManager {
         return List.of(GeyserBot.storageManager.getUserPermissions(user)).contains(permission);
     }
 
-    public static void grantPermission(Member member, MemberPermissions permission) {
-        List<MemberPermissions> permissions = new ArrayList<>();
+    public static void grantPermission(Member member, MemberRolePermissions permission) {
+        List<MemberRolePermissions> permissions = new ArrayList<>();
         permissions.addAll(List.of(GeyserBot.storageManager.getMemberPermissions(member)));
         permissions.add(permission);
-        GeyserBot.storageManager.setMemberPermissions(member, permissions.toArray(MemberPermissions[]::new));
+        GeyserBot.storageManager.setMemberPermissions(member, permissions.toArray(MemberRolePermissions[]::new));
     }
 
-    public static void grantPermission(Role role, RolePermissions permission) {
-        List<RolePermissions> permissions = new ArrayList<>();
+    public static void grantPermission(Role role, MemberRolePermissions permission) {
+        List<MemberRolePermissions> permissions = new ArrayList<>();
         permissions.addAll(List.of(GeyserBot.storageManager.getRolePermissions(role)));
         permissions.add(permission);
-        GeyserBot.storageManager.setRolePermissions(role, permissions.toArray(RolePermissions[]::new));
+        GeyserBot.storageManager.setRolePermissions(role, permissions.toArray(MemberRolePermissions[]::new));
     }
 
     public static void grantPermission(User user, UserPermissions permission) {
@@ -68,18 +72,18 @@ public class PermissionManager {
         GeyserBot.storageManager.setUserPermissions(user, permissions.toArray(UserPermissions[]::new));
     }
 
-    public static void revokePermission(Member member, MemberPermissions permission) {
-        List<MemberPermissions> permissions = new ArrayList<>();
+    public static void revokePermission(Member member, MemberRolePermissions permission) {
+        List<MemberRolePermissions> permissions = new ArrayList<>();
         permissions.addAll(List.of(GeyserBot.storageManager.getMemberPermissions(member)));
         permissions.remove(permission);
-        GeyserBot.storageManager.setMemberPermissions(member, permissions.toArray(MemberPermissions[]::new));
+        GeyserBot.storageManager.setMemberPermissions(member, permissions.toArray(MemberRolePermissions[]::new));
     }
 
-    public static void revokePermission(Role role, RolePermissions permission) {
-        List<RolePermissions> permissions = new ArrayList<>();
+    public static void revokePermission(Role role, MemberRolePermissions permission) {
+        List<MemberRolePermissions> permissions = new ArrayList<>();
         permissions.addAll(List.of(GeyserBot.storageManager.getRolePermissions(role)));
         permissions.remove(permission);
-        GeyserBot.storageManager.setRolePermissions(role, permissions.toArray(RolePermissions[]::new));
+        GeyserBot.storageManager.setRolePermissions(role, permissions.toArray(MemberRolePermissions[]::new));
     }
 
     public static void revokePermission(User user, UserPermissions permission) {

@@ -37,6 +37,7 @@ import net.dv8tion.jda.api.entities.emoji.Emoji;
 import org.geysermc.discordbot.commands.BotSlashCommand;
 import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.BotColors;
+import org.geysermc.discordbot.util.PropertiesManager;
 
 public class LeaderboardCommand extends BotSlashCommand {
 
@@ -75,7 +76,7 @@ public class LeaderboardCommand extends BotSlashCommand {
                         Separator.createDivider(Separator.Spacing.SMALL),
                         TextDisplay.of("Click the button below for the level leaderboard!"),
                         // TODO fix URL
-                        ActionRow.of(Button.link("https://example.com", "View the leaderboard").withEmoji(Emoji.fromUnicode("\uD83D\uDCC8")))
+                        ActionRow.of(Button.link(PropertiesManager.getPublicWebAddress() + "/" + guild.getId() + "/leaderboard", "View the leaderboard").withEmoji(Emoji.fromUnicode("\uD83D\uDCC8")))
                 )
                 .withAccentColor(BotColors.SUCCESS.getColor());
     }

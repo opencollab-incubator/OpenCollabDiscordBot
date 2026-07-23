@@ -31,12 +31,18 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Minimal login page. This exists mostly as a fallback/testing entry point -
  * the real panel frontend should link straight to /oauth2/authorization/discord.
  */
 @RestController
 public class LoginController {
+
+    // MediaType.TEXT_HTML has no charset, so Spring falls back to StringHttpMessageConverter's
+    // default of ISO-8859-1 when encoding the response body - declare UTF-8 explicitly instead.
+    private static final MediaType TEXT_HTML_UTF8 = new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8);
 
     @GetMapping("/login")
     public ResponseEntity<String> login(@RequestParam(name = "error", required = false) String error,
@@ -65,6 +71,6 @@ public class LoginController {
                 </html>
                 """.formatted(message);
 
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(html);
+        return ResponseEntity.ok().contentType(TEXT_HTML_UTF8).body(html);
     }
 }

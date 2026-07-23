@@ -62,6 +62,18 @@ public enum BotServers {
         return jda.getGuildById(serverId);
     }
 
+    public static boolean isHidden(Guild guild, User user) {
+        if (guild == null) return false;
+
+        for (BotServers server : values()) {
+            if (!server.serverId.equals(guild.getId())) continue;
+
+            return server.isHidden(guild.getJDA(), user);
+        }
+
+        return false;
+    }
+
     public static void executeFromAll(Guild guild, Consumer<Guild> action) {
         for (BotServers servers : values()) {
             if (servers.getServerId().equals(guild.getId())) action.accept(guild);

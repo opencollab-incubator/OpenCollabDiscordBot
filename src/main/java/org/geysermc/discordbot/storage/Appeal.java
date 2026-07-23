@@ -27,5 +27,12 @@ package org.geysermc.discordbot.storage;
 
 import net.dv8tion.jda.api.entities.Guild;
 
-public record Appeal(Guild appealingFrom, String message) {
+import java.time.Instant;
+
+public record Appeal(Instant creationTime, Guild appealingFrom, String message, State state) {
+    public enum State {
+        PENDING,
+        APPROVED,
+        DENIED
+    }
 }

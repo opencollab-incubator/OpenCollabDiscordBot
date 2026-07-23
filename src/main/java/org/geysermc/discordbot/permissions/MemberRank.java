@@ -25,29 +25,34 @@
 
 package org.geysermc.discordbot.permissions;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.awt.*;
 
-public enum MemberPermissions {
-    VIEW_APPEALS,
-    MANAGE_APPEALS,
-    CONFIGURE_SERVER;
+public enum MemberRank {
+    MEMBER("Member", null, null),
+    MODERATOR("Moderator", "hammer", Color.decode("#31b68a")),
+    DEVELOPER("Developer", "code", Color.decode("#19d1d1")),
+    PROJECT_LEAD("Project Lead", "flag", Color.decode("#95b0ff"));
 
-    public static int getRawValue(MemberPermissions... permissions) {
-        int perms = 0;
-        for (MemberPermissions permission : permissions) {
-            perms += Math.pow(2, permission.ordinal());
-        }
-        return perms;
+    private final String name;
+    private final String icon;
+    private final Color color;
+
+    MemberRank(String name, String icon, Color color) {
+        this.name = name;
+        this.icon = icon;
+        this.color = color;
     }
 
-    public static MemberPermissions[] fromRawValue(int perms) {
-        List<MemberPermissions> permissions = new ArrayList<>();
-        int i = 0;
-        while (perms > 0) {
-            if ((perms & 1) == 1) permissions.add(MemberPermissions.values()[i++]);
-            perms >>= 1;
-        }
-        return permissions.toArray(new MemberPermissions[0]);
+    public String getIcon() {
+        return this.icon;
+    }
+
+    public Color getColor() {
+        return this.color;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 }

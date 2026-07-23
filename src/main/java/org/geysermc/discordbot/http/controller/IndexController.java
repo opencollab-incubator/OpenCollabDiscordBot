@@ -26,58 +26,32 @@
 package org.geysermc.discordbot.http.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.http.HtmlUtils;
-import org.geysermc.discordbot.util.BotHelpers;
-import org.geysermc.discordbot.util.BotServers;
+import org.geysermc.discordbot.http.PageUtils;
+import org.geysermc.discordbot.http.pages.Index;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 public class IndexController {
     @GetMapping("/")
-    public ResponseEntity<String> index(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal) throws IOException {
+    public ResponseEntity<String> index(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal,
+                                        @RequestParam(name = "login_error", required = false) String loginError,
+                                        @RequestParam(name = "logout", required = false) String logout) throws IOException {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
             user = GeyserBot.getJDA().getUserById(userId);
         }
 
-        List<String> cards = new ArrayList<>();
-
-        for (BotServers server : BotServers.values()) {
-            if (server.isHidden(GeyserBot.getJDA(), user)) continue;
-
-            Guild guild = server.get(GeyserBot.getJDA());
-            if (guild == null) continue;
-
-            String iconUrl = guild.getIconUrl();
-            if (iconUrl == null) iconUrl = "https://cdn.discordapp.com/embed/avatars/1.png";
-
-            cards.add(HtmlUtils.getHtml(
-                    request, principal, "index/server_card",
-                    Map.of(
-                            "serverAvatarPfP", iconUrl,
-                            "serverName", guild.getName(),
-                            "memberCount", BotHelpers.coolFormat(guild.getMemberCount()),
-                            "serverId", guild.getId()
-                    )
-            ));
-        }
-
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(
-                HtmlUtils.getPage(request, principal, String.join("", cards), Map.of())
-        );
+        return PageUtils.getSuccessfulResponse(request, principal, new Index(user, loginError, logout));
     }
 }

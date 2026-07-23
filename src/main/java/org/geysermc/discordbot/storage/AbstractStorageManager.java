@@ -31,12 +31,14 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.geysermc.discordbot.permissions.MemberPermissions;
-import org.geysermc.discordbot.permissions.RolePermissions;
+import org.geysermc.discordbot.permissions.MemberRank;
+import org.geysermc.discordbot.permissions.MemberRolePermissions;
 import org.geysermc.discordbot.permissions.UserPermissions;
+import org.geysermc.discordbot.permissions.UserRank;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractStorageManager {
 
@@ -193,21 +195,54 @@ public abstract class AbstractStorageManager {
      */
     public abstract int getAndIncrementTicketId(String clientId);
 
-    public abstract Map<User, List<Appeal>> getCurrentAppeals();
+    public abstract CompletableFuture<Map<User, List<Appeal>>> getCurrentAppeals();
 
     public abstract List<Appeal> getCurrentAppeals(User user);
 
     public abstract void addAppeal(User user, Appeal appeal);
 
-    public abstract MemberPermissions[] getMemberPermissions(Member member);
+    public abstract MemberRolePermissions[] getMemberPermissions(Member member);
 
-    public abstract RolePermissions[] getRolePermissions(Role role);
+    public abstract MemberRolePermissions[] getRolePermissions(Role role);
 
     public abstract UserPermissions[] getUserPermissions(User user);
 
-    public abstract void setMemberPermissions(Member member, MemberPermissions[] permissions);
+    public abstract UserRank getUserRank(User user);
 
-    public abstract void setRolePermissions(Role role, RolePermissions[] permissions);
+    public abstract MemberRank getMemberRank(Member member);
+
+    public abstract void setMemberPermissions(Member member, MemberRolePermissions[] permissions);
+
+    public abstract void setRolePermissions(Role role, MemberRolePermissions[] permissions);
 
     public abstract void setUserPermissions(User user, UserPermissions[] permissions);
+
+    public abstract void setUserRank(User user, UserRank rank);
+
+    public abstract void setMemberRank(Member member, MemberRank rank);
+
+    /**
+     * Persist a web panel login so it survives a bot restart.
+     *
+     * @param tokenHash SHA-256 hash of the session token stored in the browser's cookie
+     * @param discordUserId The Discord snowflake ID of the logged-in user
+     * @param attributesJson JSON-serialized OAuth2 user attributes to rebuild the principal from
+     * @param expiresAt Epoch millisecond timestamp after which the session is no longer valid
+     */
+    public abstract void saveAuthSession(String tokenHash, long discordUserId, String attributesJson, long expiresAt);
+
+    /**
+     * Look up a persisted web panel login by its token hash.
+     *
+     * @param tokenHash SHA-256 hash of the session token from the browser's cookie
+     * @return The stored session, or {@code null} if not found or expired
+     */
+    public abstract AuthSession getAuthSession(String tokenHash);
+
+    /**
+     * Remove a persisted web panel login, e.g. on logout.
+     *
+     * @param tokenHash SHA-256 hash of the session token to remove
+     */
+    public abstract void deleteAuthSession(String tokenHash);
 }

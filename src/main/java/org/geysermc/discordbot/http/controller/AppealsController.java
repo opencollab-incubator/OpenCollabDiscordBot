@@ -29,7 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.GeyserBot;
-import org.geysermc.discordbot.http.HtmlUtils;
+import org.geysermc.discordbot.http.PageUtils;
 import org.geysermc.discordbot.util.BotHelpers;
 import org.geysermc.discordbot.util.BotServers;
 import org.springframework.http.MediaType;
@@ -54,30 +54,6 @@ public class AppealsController {
             user = GeyserBot.getJDA().getUserById(userId);
         }
 
-        List<String> cards = new ArrayList<>();
-
-        for (BotServers server : BotServers.values()) {
-            if (server.isHidden(GeyserBot.getJDA(), user)) continue;
-
-            Guild guild = server.get(GeyserBot.getJDA());
-            if (guild == null) continue;
-
-            String iconUrl = guild.getIconUrl();
-            if (iconUrl == null) iconUrl = "https://cdn.discordapp.com/embed/avatars/1.png";
-
-            cards.add(HtmlUtils.getHtml(
-                    request, principal, "index/server_card",
-                    Map.of(
-                            "serverAvatarPfP", iconUrl,
-                            "serverName", guild.getName(),
-                            "memberCount", BotHelpers.coolFormat(guild.getMemberCount()),
-                            "serverId", guild.getId()
-                    )
-            ));
-        }
-
-        return ResponseEntity.ok().contentType(MediaType.TEXT_HTML).body(
-                HtmlUtils.getPage(request, principal, String.join("", cards), Map.of())
-        );
+        return null;
     }
 }

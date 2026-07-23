@@ -31,9 +31,14 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.geysermc.discordbot.permissions.MemberRank;
+import org.geysermc.discordbot.permissions.MemberRolePermissions;
+import org.geysermc.discordbot.permissions.UserPermissions;
+import org.geysermc.discordbot.permissions.UserRank;
 import org.geysermc.discordbot.util.PropertiesManager;
 
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -55,6 +60,12 @@ public class SqliteStorageManager extends MySQLStorageManager {
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, CONSTRAINT `level_constraint` UNIQUE (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` INTEGER NOT NULL PRIMARY KEY, `server` INTEGER NOT NULL, `delay` INT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL PRIMARY KEY, `id` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `appeals` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `message` TEXT NOT NULL, `state` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_permissions` (`user` INTEGER NOT NULL PRIMARY KEY, `permissions` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_role_permissions` (`snowflake` INTEGER NOT NULL PRIMARY KEY, `permissions` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `auth_sessions` (`token_hash` VARCHAR(64) NOT NULL PRIMARY KEY, `user` INTEGER NOT NULL, `attributes` TEXT NOT NULL, `expires_at` INTEGER NOT NULL);");
         createTables.close();
     }
 
@@ -67,15 +78,16 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public String getServerPreference(long serverID, String preference) {
-        try {
-            Statement getPreferenceValue = connection.createStatement();
-            ResultSet rs = getPreferenceValue.executeQuery("SELECT `value` FROM `preferences` WHERE `server`=" + serverID + " AND `key`='" + preference + "';");
+        try (PreparedStatement getPreferenceValue = connection.prepareStatement(
+                "SELECT `value` FROM `preferences` WHERE `server`=? AND `key`=?;")) {
+            getPreferenceValue.setLong(1, serverID);
+            getPreferenceValue.setString(2, preference);
 
-            if (rs.next()) {
-                return rs.getString("value");
+            try (ResultSet rs = getPreferenceValue.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("value");
+                }
             }
-
-            getPreferenceValue.close();
         } catch (SQLException ignored) { }
 
         return null;
@@ -83,28 +95,34 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public void setServerPreference(long serverID, String preference, String value) {
-        try {
-            Statement updatePreferenceValue = connection.createStatement();
-            updatePreferenceValue.executeUpdate("INSERT OR REPLACE INTO `preferences` (`server`, `key`, `value`) VALUES ('" + serverID + "', '" + preference + "', '" + value + "');");
-            updatePreferenceValue.close();
+        try (PreparedStatement updatePreferenceValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `preferences` (`server`, `key`, `value`) VALUES (?, ?, ?);")) {
+            updatePreferenceValue.setLong(1, serverID);
+            updatePreferenceValue.setString(2, preference);
+            updatePreferenceValue.setString(3, value);
+            updatePreferenceValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
     public void addPersistentRole(Member member, Role role) {
-        try {
-            Statement addPersistentRole = connection.createStatement();
-            addPersistentRole.executeUpdate("INSERT OR REPLACE INTO `persistent_roles` (`server`, `user`, `role`) VALUES (" + member.getGuild().getId() + ", " + member.getId() + ", " + role.getId() + ");");
-            addPersistentRole.close();
+        try (PreparedStatement addPersistentRole = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `persistent_roles` (`server`, `user`, `role`) VALUES (?, ?, ?);")) {
+            addPersistentRole.setLong(1, member.getGuild().getIdLong());
+            addPersistentRole.setLong(2, member.getIdLong());
+            addPersistentRole.setLong(3, role.getIdLong());
+            addPersistentRole.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
     public void removePersistentRole(Member member, Role role) {
-        try {
-            Statement removePersistentRole = connection.createStatement();
-            removePersistentRole.executeUpdate("DELETE FROM `persistent_roles` WHERE `server`=" + member.getGuild().getId() + " AND `user`=" + member.getId() + " AND `role`=" + role.getId() + ";");
-            removePersistentRole.close();
+        try (PreparedStatement removePersistentRole = connection.prepareStatement(
+                "DELETE FROM `persistent_roles` WHERE `server`=? AND `user`=? AND `role`=?;")) {
+            removePersistentRole.setLong(1, member.getGuild().getIdLong());
+            removePersistentRole.setLong(2, member.getIdLong());
+            removePersistentRole.setLong(3, role.getIdLong());
+            removePersistentRole.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
@@ -112,15 +130,16 @@ public class SqliteStorageManager extends MySQLStorageManager {
     public List<Role> getPersistentRoles(Member member) {
         List<Role> roles = new ArrayList<>();
 
-        try {
-            Statement getPersistentRoles = connection.createStatement();
-            ResultSet rs = getPersistentRoles.executeQuery("SELECT `role` FROM `persistent_roles` WHERE `server`=" + member.getGuild().getId() + " AND `user`=" + member.getId() + ";");
+        try (PreparedStatement getPersistentRoles = connection.prepareStatement(
+                "SELECT `role` FROM `persistent_roles` WHERE `server`=? AND `user`=?;")) {
+            getPersistentRoles.setLong(1, member.getGuild().getIdLong());
+            getPersistentRoles.setLong(2, member.getIdLong());
 
-            while (rs.next()) {
-                roles.add(member.getGuild().getRoleById(rs.getString("role")));
+            try (ResultSet rs = getPersistentRoles.executeQuery()) {
+                while (rs.next()) {
+                    roles.add(member.getGuild().getRoleById(rs.getString("role")));
+                }
             }
-
-            getPersistentRoles.close();
         } catch (SQLException ignored) { }
 
         return roles;
@@ -129,19 +148,34 @@ public class SqliteStorageManager extends MySQLStorageManager {
     @Override
     public int addLog(Member user, String action, UserSnowflake target, String reason) {
         try {
-            Statement addLogEntry = connection.createStatement();
             long time = Instant.now().getEpochSecond();
-            addLogEntry.executeUpdate("INSERT OR REPLACE INTO `mod_log` (`server`, `time`, `user`, `action`, `target`, `reason`) VALUES (" + user.getGuild().getId() + ", " + time + ", " + user.getId() + ", '" + action + "', " + target.getId() + ", '" + reason + "');");
-            addLogEntry.close();
 
-            Statement getLogEntry = connection.createStatement();
-            ResultSet rs = getLogEntry.executeQuery("SELECT `id` FROM `mod_log` WHERE `server`=" + user.getGuild().getId() + " AND `time`=" + time + " AND `user`=" + user.getId() + " AND `action`='" + action + "' AND `target`=" + target.getId() + " AND `reason`='" + reason + "' LIMIT 1;");
-
-            if (rs.next()) {
-                return rs.getInt("id");
+            try (PreparedStatement addLogEntry = connection.prepareStatement(
+                    "INSERT OR REPLACE INTO `mod_log` (`server`, `time`, `user`, `action`, `target`, `reason`) VALUES (?, ?, ?, ?, ?, ?);")) {
+                addLogEntry.setLong(1, user.getGuild().getIdLong());
+                addLogEntry.setLong(2, time);
+                addLogEntry.setLong(3, user.getIdLong());
+                addLogEntry.setString(4, action);
+                addLogEntry.setLong(5, target.getIdLong());
+                addLogEntry.setString(6, reason);
+                addLogEntry.executeUpdate();
             }
 
-            getLogEntry.close();
+            try (PreparedStatement getLogEntry = connection.prepareStatement(
+                    "SELECT `id` FROM `mod_log` WHERE `server`=? AND `time`=? AND `user`=? AND `action`=? AND `target`=? AND `reason`=? LIMIT 1;")) {
+                getLogEntry.setLong(1, user.getGuild().getIdLong());
+                getLogEntry.setLong(2, time);
+                getLogEntry.setLong(3, user.getIdLong());
+                getLogEntry.setString(4, action);
+                getLogEntry.setLong(5, target.getIdLong());
+                getLogEntry.setString(6, reason);
+
+                try (ResultSet rs = getLogEntry.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("id");
+                    }
+                }
+            }
         } catch (SQLException ignored) { }
 
         return -1;
@@ -151,18 +185,20 @@ public class SqliteStorageManager extends MySQLStorageManager {
     public List<ModLog> getLogs(Guild guild, UserSnowflake target, int limit) {
         List<ModLog> logs = new ArrayList<>();
 
-        try {
-            Statement getLogEntry = connection.createStatement();
-            ResultSet rs = getLogEntry.executeQuery("SELECT `id`, `time`, `user`, `action`, `reason` FROM `mod_log` WHERE `server`=" + guild.getId() + " AND `target`=" + target.getId() + " ORDER BY `time` ASC LIMIT " + limit + ";");
+        try (PreparedStatement getLogEntry = connection.prepareStatement(
+                "SELECT `id`, `time`, `user`, `action`, `reason` FROM `mod_log` WHERE `server`=? AND `target`=? ORDER BY `time` ASC LIMIT ?;")) {
+            getLogEntry.setLong(1, guild.getIdLong());
+            getLogEntry.setLong(2, target.getIdLong());
+            getLogEntry.setInt(3, limit);
 
-            while (rs.next()) {
-                Instant time = Instant.ofEpochSecond(rs.getLong("time"));
-                Member user = guild.getMemberById(rs.getLong("user"));
+            try (ResultSet rs = getLogEntry.executeQuery()) {
+                while (rs.next()) {
+                    Instant time = Instant.ofEpochSecond(rs.getLong("time"));
+                    Member user = guild.getMemberById(rs.getLong("user"));
 
-                logs.add(new ModLog(rs.getInt("id"), time, user, rs.getString("action"), target, rs.getString("reason")));
+                    logs.add(new ModLog(rs.getInt("id"), time, user, rs.getString("action"), target, rs.getString("reason")));
+                }
             }
-
-            getLogEntry.close();
         } catch (SQLException ignored) { }
 
         return logs;
@@ -170,24 +206,25 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public ModLog getLog(Guild guild, int id) {
-        try {
-            Statement getLogEntry = connection.createStatement();
-            ResultSet rs = getLogEntry.executeQuery("SELECT `id`, `time`, `user`, `action`, `target`, `reason` FROM `mod_log` WHERE `server`=" + guild.getId() + " AND `id`=" + id + ";");
+        try (PreparedStatement getLogEntry = connection.prepareStatement(
+                "SELECT `id`, `time`, `user`, `action`, `target`, `reason` FROM `mod_log` WHERE `server`=? AND `id`=?;")) {
+            getLogEntry.setLong(1, guild.getIdLong());
+            getLogEntry.setInt(2, id);
 
-            if (rs.next()) {
-                Instant time = Instant.ofEpochSecond(rs.getLong("time"));
-                Member user = guild.getMemberById(rs.getLong("user"));
-                UserSnowflake target = guild.getJDA().getUserById(rs.getLong("target"));
+            try (ResultSet rs = getLogEntry.executeQuery()) {
+                if (rs.next()) {
+                    Instant time = Instant.ofEpochSecond(rs.getLong("time"));
+                    Member user = guild.getMemberById(rs.getLong("user"));
+                    UserSnowflake target = guild.getJDA().getUserById(rs.getLong("target"));
 
-                // Construct a user from the id
-                if (target == null) {
-                    target = User.fromId(rs.getLong("target"));
+                    // Construct a user from the id
+                    if (target == null) {
+                        target = User.fromId(rs.getLong("target"));
+                    }
+
+                    return new ModLog(rs.getInt("id"), time, user, rs.getString("action"), target, rs.getString("reason"));
                 }
-
-                return new ModLog(rs.getInt("id"), time, user, rs.getString("action"), target, rs.getString("reason"));
             }
-
-            getLogEntry.close();
         } catch (SQLException ignored) { }
 
         return null;
@@ -195,24 +232,26 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public void updateLog(Guild guild, int id, String reason) {
-        try {
-            Statement updateLevelValue = connection.createStatement();
-            updateLevelValue.executeUpdate("UPDATE `mod_log` SET `reason`='" + reason + "' WHERE `id`=" + id + ";");
-            updateLevelValue.close();
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "UPDATE `mod_log` SET `reason`=? WHERE `id`=?;")) {
+            updateLevelValue.setString(1, reason);
+            updateLevelValue.setInt(2, id);
+            updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
     public LevelInfo getLevel(Member user) {
-        try {
-            Statement getLevelValue = connection.createStatement();
-            ResultSet rs = getLevelValue.executeQuery("SELECT `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + user.getGuild().getId() + " AND `user`=" + user.getId() + ";");
+        try (PreparedStatement getLevelValue = connection.prepareStatement(
+                "SELECT `level`, `xp`, `messages` FROM `levels` WHERE `server`=? AND `user`=?;")) {
+            getLevelValue.setLong(1, user.getGuild().getIdLong());
+            getLevelValue.setLong(2, user.getIdLong());
 
-            if (rs.next()) {
-                return new LevelInfo(user.getIdLong(), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages"));
+            try (ResultSet rs = getLevelValue.executeQuery()) {
+                if (rs.next()) {
+                    return new LevelInfo(user.getIdLong(), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages"));
+                }
             }
-
-            getLevelValue.close();
 
             return new LevelInfo(0, 0, 0, 0);
         } catch (SQLException ignored) { }
@@ -222,25 +261,29 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public void setLevel(Member user, LevelInfo levelInfo) {
-        try {
-            Statement updateLevelValue = connection.createStatement();
-            updateLevelValue.executeUpdate("INSERT OR REPLACE INTO `levels` (`server`, `user`, `level`, `xp`, `messages`) VALUES (" + user.getGuild().getId() + ", " + user.getId() + ", " + levelInfo.getLevel() + ", " + levelInfo.getXp() + ", " + levelInfo.getMessages() + ");");
-            updateLevelValue.close();
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `levels` (`server`, `user`, `level`, `xp`, `messages`) VALUES (?, ?, ?, ?, ?);")) {
+            updateLevelValue.setLong(1, user.getGuild().getIdLong());
+            updateLevelValue.setLong(2, user.getIdLong());
+            updateLevelValue.setInt(3, levelInfo.getLevel());
+            updateLevelValue.setInt(4, levelInfo.getXp());
+            updateLevelValue.setInt(5, levelInfo.getMessages());
+            updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
     public List<LevelInfo> getLevels(long guild) {
         List<LevelInfo> levels = new ArrayList<>();
-        try {
-            Statement getLevelValue = connection.createStatement();
-            ResultSet rs = getLevelValue.executeQuery("SELECT `user`, `level`, `xp`, `messages` FROM `levels` WHERE `server`=" + guild + " ORDER BY xp DESC LIMIT 100;");
+        try (PreparedStatement getLevelValue = connection.prepareStatement(
+                "SELECT `user`, `level`, `xp`, `messages` FROM `levels` WHERE `server`=? ORDER BY xp DESC LIMIT 100;")) {
+            getLevelValue.setLong(1, guild);
 
-            while (rs.next()) {
-                levels.add(new LevelInfo(rs.getLong("user"), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages")));
+            try (ResultSet rs = getLevelValue.executeQuery()) {
+                while (rs.next()) {
+                    levels.add(new LevelInfo(rs.getLong("user"), rs.getInt("level"), rs.getInt("xp"), rs.getInt("messages")));
+                }
             }
-
-            getLevelValue.close();
         } catch (SQLException ignored) { }
 
         return levels;
@@ -250,15 +293,15 @@ public class SqliteStorageManager extends MySQLStorageManager {
     public List<SlowModeInfo> getSlowModeChannels(Guild guild) {
         List<SlowModeInfo> infos = new ArrayList<>();
 
-        try {
-            Statement getLogEntry = connection.createStatement();
-            ResultSet rs = getLogEntry.executeQuery("SELECT `channel`, `server`, `delay` FROM `slow_mode` WHERE `server`=" + guild.getId() + ";");
+        try (PreparedStatement getLogEntry = connection.prepareStatement(
+                "SELECT `channel`, `server`, `delay` FROM `slow_mode` WHERE `server`=?;")) {
+            getLogEntry.setLong(1, guild.getIdLong());
 
-            while (rs.next()) {
-                infos.add(new SlowModeInfo(rs.getLong("server"), rs.getLong("channel"), rs.getInt("delay")));
+            try (ResultSet rs = getLogEntry.executeQuery()) {
+                while (rs.next()) {
+                    infos.add(new SlowModeInfo(rs.getLong("server"), rs.getLong("channel"), rs.getInt("delay")));
+                }
             }
-
-            getLogEntry.close();
         } catch (SQLException ignored) { }
 
         return infos;
@@ -266,10 +309,12 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
     @Override
     public void setSlowModeChannel(TextChannel channel, int delay) {
-        try {
-            Statement updateLevelValue = connection.createStatement();
-            updateLevelValue.executeUpdate("INSERT OR REPLACE INTO `slow_mode` (`channel`, `server`, `delay`) VALUES (" + channel.getId() + ", " + channel.getGuild().getId() + ", " + delay + ");");
-            updateLevelValue.close();
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `slow_mode` (`channel`, `server`, `delay`) VALUES (?, ?, ?);")) {
+            updateLevelValue.setLong(1, channel.getIdLong());
+            updateLevelValue.setLong(2, channel.getGuild().getIdLong());
+            updateLevelValue.setInt(3, delay);
+            updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
@@ -278,23 +323,125 @@ public class SqliteStorageManager extends MySQLStorageManager {
         int id = -1;
 
         try {
-            Statement getCurrentIdEntry = connection.createStatement();
-            ResultSet rs = getCurrentIdEntry.executeQuery("SELECT `id` FROM `tickets` WHERE `client_id`='" + clientId + "';");
+            try (PreparedStatement getCurrentIdEntry = connection.prepareStatement(
+                    "SELECT `id` FROM `tickets` WHERE `client_id`=?;")) {
+                getCurrentIdEntry.setString(1, clientId);
 
-            while (rs.next()) {
-                id = rs.getInt("id");
+                try (ResultSet rs = getCurrentIdEntry.executeQuery()) {
+                    while (rs.next()) {
+                        id = rs.getInt("id");
+                    }
+                }
             }
             if (id == -1) id = 0;
 
-            getCurrentIdEntry.close();
-
-            Statement setCurrentIdEntry = connection.createStatement();
-            setCurrentIdEntry.execute("INSERT OR REPLACE INTO `tickets` (`client_id`, `id`) VALUES ('" + clientId + "', " + (id + 1) + ");");
-            setCurrentIdEntry.close();
+            try (PreparedStatement setCurrentIdEntry = connection.prepareStatement(
+                    "INSERT OR REPLACE INTO `tickets` (`client_id`, `id`) VALUES (?, ?);")) {
+                setCurrentIdEntry.setString(1, clientId);
+                setCurrentIdEntry.setInt(2, id + 1);
+                setCurrentIdEntry.execute();
+            }
         } catch (SQLException ignored) {
             ignored.printStackTrace();
         }
 
         return id;
+    }
+
+    @Override
+    public void setMemberPermissions(Member member, MemberRolePermissions[] permissions) {
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `member_role_permissions` (`snowflake`, `permissions`) VALUES (?, ?);")) {
+            int value = MemberRolePermissions.getRawValue(permissions);
+            updateLevelValue.setLong(1, member.getIdLong());
+            updateLevelValue.setInt(2, value);
+            updateLevelValue.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void setRolePermissions(Role role, MemberRolePermissions[] permissions) {
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `member_role_permissions` (`snowflake`, `permissions`) VALUES (?, ?);")) {
+            int value = MemberRolePermissions.getRawValue(permissions);
+            updateLevelValue.setLong(1, role.getIdLong());
+            updateLevelValue.setInt(2, value);
+            updateLevelValue.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void setUserPermissions(User user, UserPermissions[] permissions) {
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `user_permissions` (`user`, `permissions`) VALUES (?, ?);")) {
+            int value = UserPermissions.getRawValue(permissions);
+            updateLevelValue.setLong(1, user.getIdLong());
+            updateLevelValue.setInt(2, value);
+            updateLevelValue.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void setUserRank(User user, UserRank rank) {
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `user_ranks` (`user`, `ordinal`) VALUES (?, ?);")) {
+            int value = rank.ordinal();
+            updateLevelValue.setLong(1, user.getIdLong());
+            updateLevelValue.setInt(2, value);
+            updateLevelValue.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void setMemberRank(Member member, MemberRank rank) {
+        try (PreparedStatement updateLevelValue = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `member_ranks` (`user`, `ordinal`) VALUES (?, ?);")) {
+            int value = rank.ordinal();
+            updateLevelValue.setLong(1, member.getIdLong());
+            updateLevelValue.setInt(2, value);
+            updateLevelValue.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public void saveAuthSession(String tokenHash, long discordUserId, String attributesJson, long expiresAt) {
+        try (PreparedStatement saveAuthSession = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `auth_sessions` (`token_hash`, `user`, `attributes`, `expires_at`) VALUES (?, ?, ?, ?);")) {
+            saveAuthSession.setString(1, tokenHash);
+            saveAuthSession.setLong(2, discordUserId);
+            saveAuthSession.setString(3, attributesJson);
+            saveAuthSession.setLong(4, expiresAt);
+            saveAuthSession.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
+    public AuthSession getAuthSession(String tokenHash) {
+        try (PreparedStatement getAuthSession = connection.prepareStatement(
+                "SELECT `user`, `attributes`, `expires_at` FROM `auth_sessions` WHERE `token_hash`=?;")) {
+            getAuthSession.setString(1, tokenHash);
+
+            try (ResultSet rs = getAuthSession.executeQuery()) {
+                if (rs.next()) {
+                    long expiresAt = rs.getLong("expires_at");
+                    if (expiresAt < System.currentTimeMillis()) {
+                        deleteAuthSession(tokenHash);
+                        return null;
+                    }
+
+                    return new AuthSession(rs.getLong("user"), rs.getString("attributes"), expiresAt);
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return null;
+    }
+
+    @Override
+    public void deleteAuthSession(String tokenHash) {
+        try (PreparedStatement deleteAuthSession = connection.prepareStatement("DELETE FROM `auth_sessions` WHERE `token_hash`=?;")) {
+            deleteAuthSession.setString(1, tokenHash);
+            deleteAuthSession.executeUpdate();
+        } catch (SQLException ignored) { }
     }
 }

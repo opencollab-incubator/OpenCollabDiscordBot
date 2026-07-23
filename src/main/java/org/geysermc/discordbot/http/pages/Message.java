@@ -23,31 +23,28 @@
  * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.permissions;
+package org.geysermc.discordbot.http.pages;
 
-import java.util.ArrayList;
-import java.util.List;
+import net.dv8tion.jda.api.entities.User;
+import org.geysermc.discordbot.http.html.Base;
+import org.geysermc.discordbot.http.html.Element;
 
-public enum RolePermissions {
-    VIEW_APPEALS,
-    MANAGE_APPEALS,
-    CONFIGURE_SERVER;
+public class Message extends Base {
+    protected final String title;
+    protected final String message;
 
-    public static int getRawValue(RolePermissions... permissions) {
-        int perms = 0;
-        for (RolePermissions permission : permissions) {
-            perms += Math.pow(2, permission.ordinal());
-        }
-        return perms;
+    public Message(User user, String title, String message) {
+        super(user);
+        this.title = title;
+        this.message = message;
     }
 
-    public static RolePermissions[] fromRawValue(int perms) {
-        List<RolePermissions> permissions = new ArrayList<>();
-        int i = 0;
-        while (perms > 0) {
-            if ((perms & 1) == 1) permissions.add(RolePermissions.values()[i++]);
-            perms >>= 1;
-        }
-        return permissions.toArray(new RolePermissions[0]);
+    @Override
+    public void addContent(Element container) {
+        container.addInnerElement(Element.of("h2", "text-3xl font-bold mb-4")
+                .addInnerElement(title));
+
+        container.addInnerElement(Element.of("p", "text-gray-700 dark:text-gray-300")
+                .addInnerElement(message));
     }
 }

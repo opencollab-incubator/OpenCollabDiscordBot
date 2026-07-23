@@ -106,7 +106,8 @@ public class TicketCommand extends SlashCommand {
             Member member = event.optMember("member");
             event.getTextChannel().upsertPermissionOverride(member)
                             .setAllowed(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                                event.getTextChannel().sendMessage(":wave: %s".formatted(member.getAsMention())).queue();
+                                event.getTextChannel().sendMessage(":wave: %s".formatted(member.getAsMention()))
+                                        .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Added %s.".formatted(member.getAsMention())).setEphemeral(true).queue();
@@ -136,7 +137,8 @@ public class TicketCommand extends SlashCommand {
             Member member = event.optMember("member");
             event.getTextChannel().upsertPermissionOverride(member)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(member.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(member.getAsMention()))
+                                .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Removed %s.".formatted(member.getAsMention())).setEphemeral(true).queue();
@@ -166,7 +168,8 @@ public class TicketCommand extends SlashCommand {
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setAllowed(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":wave: %s".formatted(role.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":wave: %s".formatted(role.getAsMention()))
+                                .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Added %s.".formatted(role.getAsMention())).setEphemeral(true).queue();
@@ -196,7 +199,8 @@ public class TicketCommand extends SlashCommand {
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(role.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(role.getAsMention()))
+                                .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Removed %s.".formatted(role.getAsMention())).setEphemeral(true).queue();

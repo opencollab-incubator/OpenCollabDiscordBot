@@ -28,6 +28,7 @@ package org.geysermc.discordbot.util;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -40,15 +41,14 @@ import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -91,6 +91,19 @@ public class TicketHelper {
         return false;
     }
 
+    public static boolean canManageTicket(Member member, GuildChannel c) {
+        if (!isTicketChannel(c)) return false;
+
+        TextChannel channel = (TextChannel) c;
+        TicketMetadata metadata = getTicketMetadata(channel);
+        if (metadata == null) return false;
+        Role role = c.getGuild().getRoleById(metadata.clientRoleId());
+        List<Role> validRoles = new ArrayList<>();
+        validRoles.add(role);
+        validRoles.addAll(ServerConfiguration.TICKET_ALLOWED_ROLES.get(c.getGuild()));
+        return member.getUnsortedRoles().stream().anyMatch(validRoles::contains);
+    }
+
     public static void closeTicket(GuildChannel channel, Member member) {
         if (!TicketHelper.isTicketChannel(channel)) return;
 
@@ -128,11 +141,10 @@ public class TicketHelper {
         }
 
         Path logDirectory = TicketHelper.getTicketDirectory(textChannel);
-        Path tempZip = Path.of("tmp", "ticket_%s_%s.zip".formatted(metadata.clientId(), metadata.id()));
 
+        ByteArrayOutputStream stream;
         try {
-            Files.createDirectories(tempZip.getParent());
-            FileOutputStream stream = new FileOutputStream(tempZip.toFile());
+            stream = new ByteArrayOutputStream();
             ZipOutputStream zipOut = new ZipOutputStream(stream);
             Files.list(logDirectory).forEach(item -> {
                 try {
@@ -155,17 +167,17 @@ public class TicketHelper {
 
             FileUtils.deleteDirectory(logDirectory.toFile());
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            StringWriter writer = new StringWriter();
+            PrintWriter printWriter = new PrintWriter(writer);
+            e.printStackTrace(printWriter);
+            textChannel.sendMessage(writer.toString()).queue();
+            e.printStackTrace();
+            return;
         }
 
-        archiveChannel.sendFiles(FileUpload.fromData(tempZip)).setContent("Ticket closed by %s.\nClient: <@&%s>\nType: %s".formatted(member.getAsMention(), metadata.clientRoleId(), metadata.type().name()))
-                .setAllowedMentions(List.of()).queue(message -> {
-            try {
-                Files.deleteIfExists(tempZip);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        archiveChannel.sendFiles(FileUpload.fromData(stream.toByteArray(),  "ticket_%s_%s.zip".formatted(metadata.clientId(), metadata.id())))
+                .setContent("Ticket closed by %s.\nClient: <@&%s>\nType: %s".formatted(member.getAsMention(), metadata.clientRoleId(), metadata.type().name()))
+                .setAllowedMentions(List.of()).queue(message -> {});
 
         channel.delete().queue();
     }

@@ -50,7 +50,6 @@ public class TicketCommand extends BotSlashCommand {
         this.hidden = true;
         this.help = "Help tool to manage tickets.";
         this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
-        this.userPermissions = new Permission[]{Permission.MANAGE_CHANNEL};
         this.children = new SlashCommand[] {
                 new CloseTicketSubCommand(),
                 new AddUserTicketSubCommand(),
@@ -79,6 +78,10 @@ public class TicketCommand extends BotSlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             TicketHelper.closeTicket(event.getGuildChannel(), event.getMember());
         }
     }
@@ -99,10 +102,15 @@ public class TicketCommand extends BotSlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             Member member = event.optMember("member");
             event.getTextChannel().upsertPermissionOverride(member)
                             .setAllowed(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                                event.getTextChannel().sendMessage(":wave: %s".formatted(member.getAsMention())).queue();
+                                event.getTextChannel().sendMessage(":wave: %s".formatted(member.getAsMention()))
+                                        .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Added %s.".formatted(member.getAsMention())).setEphemeral(true).queue();
@@ -125,10 +133,15 @@ public class TicketCommand extends BotSlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             Member member = event.optMember("member");
             event.getTextChannel().upsertPermissionOverride(member)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
-                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(member.getAsMention())).queue();
+                        event.getTextChannel().sendMessage(":octagonal_sign: %s".formatted(member.getAsMention()))
+                                .setAllowedMentions(List.of()).queue();
                     });
 
             event.reply("Removed %s.".formatted(member.getAsMention())).setEphemeral(true).queue();
@@ -149,6 +162,10 @@ public class TicketCommand extends BotSlashCommand {
         protected void execute(SlashCommandEvent event) {
             if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
             }
 
             Role role = event.optRole("role");
@@ -179,6 +196,10 @@ public class TicketCommand extends BotSlashCommand {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
             }
 
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
+            }
+
             Role role = event.optRole("role");
             event.getTextChannel().upsertPermissionOverride(role)
                     .setDenied(Permission.VIEW_CHANNEL).queue(permissionOverride -> {
@@ -206,6 +227,10 @@ public class TicketCommand extends BotSlashCommand {
         protected void execute(@NotNull SlashCommandEvent event) {
             if (!TicketHelper.isTicketChannel(event.getGuildChannel())) {
                 event.reply("This command can only be used within tickets.").setEphemeral(true).queue();
+            }
+
+            if (!TicketHelper.canManageTicket(event.getMember(), event.getGuildChannel())) {
+                event.reply("You do not have permission to manage this ticket.").setEphemeral(true).queue();
             }
 
             TicketMetadata metadata = TicketHelper.getTicketMetadata(event.getTextChannel());

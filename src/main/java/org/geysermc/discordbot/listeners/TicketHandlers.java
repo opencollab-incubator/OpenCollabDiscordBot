@@ -145,7 +145,7 @@ public class TicketHandlers {
                     channel.sendMessage(builder.toString())
                             .setEmbeds(new EmbedBuilder()
                                     .setTitle("Ticket created!")
-                                    .setDescription("Please describe your issue and be patient while we get back to you!")
+                                    .setDescription(ticketData.type().message())
                                     .setColor(BotColors.SUCCESS.getColor())
                                     .build())
                             .setComponents(row)

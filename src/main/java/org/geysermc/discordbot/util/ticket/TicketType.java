@@ -37,6 +37,7 @@ public enum TicketType {
             ButtonStyle.PRIMARY,
             "ticket-create",
             "Create Ticket",
+            "Please describe the issue or feature request here. For issues, please also provide replication steps if available. Thank you!",
             new TicketOptions(
                     false,
                     null
@@ -46,6 +47,7 @@ public enum TicketType {
             ButtonStyle.DANGER,
             "ticket-create-exploit",
             "Create Exploit Ticket",
+            "Please provide as much detail is possible - console logs, heapdump, and/or profiler run. We'll get back to you as soon as possible!",
             new TicketOptions(
                     true,
                     "exploit"
@@ -55,17 +57,23 @@ public enum TicketType {
     private final ButtonStyle style;
     private final String buttonId;
     private final String label;
+    private final String message;
     private final TicketOptions options;
 
-    TicketType(ButtonStyle style, String buttonId, String label, TicketOptions options) {
+    TicketType(ButtonStyle style, String buttonId, String label, String message, TicketOptions options) {
         this.style = style;
         this.buttonId = buttonId;
         this.label = label;
+        this.message = message;
         this.options = options;
     }
 
     public String buttonId() {
         return this.buttonId;
+    }
+
+    public String message() {
+        return this.message;
     }
 
     public TicketOptions options() {

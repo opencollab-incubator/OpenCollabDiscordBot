@@ -26,21 +26,44 @@
 package org.geysermc.discordbot.permissions;
 
 import java.awt.*;
+import java.util.EnumSet;
 
 public enum MemberRank {
-    MEMBER("Member", null, null),
-    MODERATOR("Moderator", "hammer", Color.decode("#31b68a")),
-    DEVELOPER("Developer", "code", Color.decode("#19d1d1")),
-    PROJECT_LEAD("Project Lead", "flag", Color.decode("#95b0ff"));
+    BOOSTER(
+            "Booster", "gem", Color.decode("#e252d2")
+    ),
+    CONTRIBUTOR(
+            "Contributor", "sliders", Color.decode("#e2821b")
+    ),
+    DEVELOPER(
+            "Developer", "code", Color.decode("#17a770"),
+            MemberRolePermissions.CONFIGURE_SERVER
+    ),
+    PROJECT_LEAD(
+            "Project Lead", "flag", Color.decode("#32a0f7"),
+            MemberRolePermissions.CONFIGURE_SERVER,
+            MemberRolePermissions.MANAGE_RANKS,
+            MemberRolePermissions.MANAGE_PERMISSIONS
+    ),
+    SERVER_MANAGER(
+            "Server Manager", "shield-halved", Color.decode("#3159f7"),
+            MemberRolePermissions.CONFIGURE_SERVER,
+            MemberRolePermissions.MANAGE_RANKS,
+            MemberRolePermissions.MANAGE_PERMISSIONS,
+            MemberRolePermissions.VIEW_TICKETS,
+            MemberRolePermissions.MANAGE_TICKETS
+    );
 
     private final String name;
     private final String icon;
     private final Color color;
+    private final EnumSet<MemberRolePermissions> permissions;
 
-    MemberRank(String name, String icon, Color color) {
+    MemberRank(String name, String icon, Color color, MemberRolePermissions... permissions) {
         this.name = name;
         this.icon = icon;
         this.color = color;
+        this.permissions = permissions.length == 0 ? EnumSet.noneOf(MemberRolePermissions.class) : EnumSet.of(permissions[0], permissions);
     }
 
     public String getIcon() {
@@ -49,6 +72,10 @@ public enum MemberRank {
 
     public Color getColor() {
         return this.color;
+    }
+
+    public EnumSet<MemberRolePermissions> getPermissions() {
+        return this.permissions;
     }
 
     @Override

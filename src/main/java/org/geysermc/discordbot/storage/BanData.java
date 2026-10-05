@@ -29,8 +29,8 @@ import net.dv8tion.jda.api.entities.User;
 
 import java.time.Instant;
 
-public record BanData(long userId, Instant issuedOn, Instant expiryTime) {
-    public BanData(User user, Instant issuedOn, Instant expiryTime) {
-        this(user.getIdLong(), issuedOn, expiryTime);
+public record BanData(long userId, Instant issuedOn, Instant expiryTime, String reason) {
+    public BanData(User user, Instant issuedOn, Instant expiryTime, String reason) {
+        this(user.getIdLong(), issuedOn, expiryTime, reason);
     }
 }

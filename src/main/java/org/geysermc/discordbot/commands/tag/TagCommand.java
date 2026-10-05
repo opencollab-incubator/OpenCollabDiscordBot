@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024 GeyserMC. http://geysermc.org
+ * Copyright (c) 2020-2026 Open Collaboration. https://opencollaboration.dev, GeyserMC. https://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,23 +19,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @author GeyserMC
- * @link https://github.com/GeyserMC/GeyserDiscordBot
+ * @author OpenCollab, GeyserMC
+ * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.commands;
+package org.geysermc.discordbot.commands.tag;
 
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.commands.filter.FilteredSlashCommand;
-import org.geysermc.discordbot.tags.SlashTag;
-import org.geysermc.discordbot.tags.TagsManager;
+import org.geysermc.discordbot.tag.Tag;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.DicesCoefficient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,11 +47,13 @@ import java.util.List;
 
 public class TagCommand extends FilteredSlashCommand {
 
+    private static final Logger log = LoggerFactory.getLogger(TagCommand.class);
+
     public TagCommand() {
         this.name = "tag";
         this.help = "Fetch a tag";
         this.arguments = "<name>";
-        this.guildOnly = false;
+        this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
 
         this.options = Collections.singletonList(
             new OptionData(OptionType.STRING, "name", "The tag to get (Supports aliases)", true)
@@ -57,27 +63,12 @@ public class TagCommand extends FilteredSlashCommand {
 
     @Override
     protected void executeFiltered(SlashCommandEvent event) {
+        if (!event.isFromGuild()) return;
         String tagName = event.getOption("name").getAsString();
-        SlashTag tag = null;
-
-        for (SlashTag slashTag : TagsManager.getEmbedTags()) {
-            if (slashTag.getName().equalsIgnoreCase(tagName)) {
-                tag = slashTag;
-                break;
-            }
-
-            if (slashTag.getAliases() != null && !slashTag.getAliases().isEmpty()) {
-                for (String alias : slashTag.getAliases().split(",")) {
-                    if (alias.equalsIgnoreCase(tagName)) {
-                        tag = slashTag;
-                        break;
-                    }
-                }
-            }
-        }
+        Tag tag = GeyserBot.tagManager.getTag(event.getGuild(), tagName);
 
         if (tag != null) {
-            tag.replyWithTag(event);
+            event.reply(tag.create()).queue();
         } else {
             event.replyEmbeds(new EmbedBuilder()
                     .setColor(BotColors.FAILURE.getColor())
@@ -89,11 +80,12 @@ public class TagCommand extends FilteredSlashCommand {
 
     @Override
     public void onAutoComplete(CommandAutoCompleteInteractionEvent event) {
+        //if (!event.isFromGuild()) return;
         // Get the query
         String query = event.getFocusedOption().getValue();
 
         // Get the providers
-        List<String> tags = potentialTags(query);
+        List<String> tags = potentialTags(query, event.getGuild());
 
         event.replyChoices(tags.stream()
                         .distinct()
@@ -103,41 +95,24 @@ public class TagCommand extends FilteredSlashCommand {
                 .queue();
     }
 
-    List<String> potentialTags(String query) {
+    List<String> potentialTags(String query, Guild guild) {
         List<String> potential = new ArrayList<>();
 
-        for (SlashTag slashTag : TagsManager.getEmbedTags()) {
+        for (String name : GeyserBot.tagManager.getTags(guild).keySet()) {
             // Check if the name starts with the query
-            if (slashTag.getName().toLowerCase().startsWith(query.toLowerCase())) {
-                potential.add(slashTag.getName());
+            if (name.toLowerCase().startsWith(query.toLowerCase())) {
+                potential.add(name);
                 continue;
             }
 
             // Check if the name is similar
-            double similar = DicesCoefficient.diceCoefficientOptimized(query.toLowerCase(), slashTag.getName().toLowerCase());
+            double similar = DicesCoefficient.diceCoefficientOptimized(query.toLowerCase(), name.toLowerCase());
             if (similar > 0.2d) {
-                potential.add(slashTag.getName());
-                continue;
-            }
-
-            // Check the aliases
-            if (slashTag.getAliases() != null && !slashTag.getAliases().isEmpty()) {
-                for (String alias : slashTag.getAliases().split(",")) {
-                    // Check if the alias starts with the query
-                    if (alias.toLowerCase().startsWith(query.toLowerCase())) {
-                        potential.add(alias);
-                        break;
-                    }
-
-                    // Check if the alias is similar
-                    double aliasSimilar = DicesCoefficient.diceCoefficientOptimized(query.toLowerCase(), alias.toLowerCase());
-                    if (aliasSimilar > 0.2d) {
-                        potential.add(alias);
-                        break;
-                    }
-                }
+                potential.add(name);
             }
         }
+
+        log.info(potential.toString());
 
         return potential;
     }

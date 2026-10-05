@@ -30,11 +30,8 @@ import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.BotServers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class BotSlashCommand extends SlashCommand {
-    private static final Logger log = LoggerFactory.getLogger(BotSlashCommand.class);
     protected BotServers[] validServers = new BotServers[]{};
     protected ServerModule requiredModule = null;
 

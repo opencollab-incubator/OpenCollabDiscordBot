@@ -54,7 +54,8 @@ public class BanCommand extends BotSlashCommand {
 
         this.options = Arrays.asList(
                 new OptionData(OptionType.USER, "member", "The member to ban", true),
-                new OptionData(OptionType.INTEGER, "days", "How many days worth of messages should we purge"),
+                new OptionData(OptionType.INTEGER, "days", "How many days the member should be banned for"),
+                new OptionData(OptionType.INTEGER, "days-deleted", "How many days worth of messages should we purge"),
                 new OptionData(OptionType.BOOLEAN, "silent", "Toggle notifying the user upon banning"),
                 new OptionData(OptionType.STRING, "reason", "Specify a reason for banning")
         );
@@ -67,11 +68,12 @@ public class BanCommand extends BotSlashCommand {
         Member moderator = event.getMember();
 
         // Fetch ban args
-        int days = event.getOption("days", 0, OptionMapping::getAsInt);
+        int days = event.getOption("days", -1, OptionMapping::getAsInt);
+        int daysDeleted = event.getOption("days-deleted", 0, OptionMapping::getAsInt);
         boolean silent = event.optBoolean("silent", false);
         String reason = event.optString("reason", "*None*");
 
-        event.replyEmbeds(ModerationHelper.banUser(member, moderator, event.getGuild(), days, silent, reason, event.getChannel())).queue();
+        event.replyEmbeds(ModerationHelper.banUser(member, moderator, event.getGuild(), days, daysDeleted, silent, reason, event.getChannel())).queue();
     }
 
     @Override
@@ -84,6 +86,7 @@ public class BanCommand extends BotSlashCommand {
         Member moderator = event.getMember();
 
         // Maybe worth getting rid of this depends on how many times its used
+        int days = -1;
         int delDays = 0;
         boolean silent = false;
 
@@ -101,6 +104,14 @@ public class BanCommand extends BotSlashCommand {
                     break;
 
                 // Check the delete days flag
+                case 't':
+                    try {
+                        days = Integer.parseInt(arg.replace("-t", ""));
+                    } catch (NumberFormatException ignored) {
+                        event.getMessage().reply("Please specify an integer for days to delete messages!").queue();
+                        return;
+                    }
+                    break;
                 case 'd':
                     try {
                         delDays = Integer.parseInt(arg.replace("-d", ""));
@@ -131,6 +142,6 @@ public class BanCommand extends BotSlashCommand {
             reason = reasonParts;
         }
 
-        event.getMessage().replyEmbeds(ModerationHelper.banUser(member, moderator, event.getGuild(), delDays, silent, reason, event.getChannel())).queue();
+        event.getMessage().replyEmbeds(ModerationHelper.banUser(member, moderator, event.getGuild(), days, delDays, silent, reason, event.getChannel())).queue();
     }
 }

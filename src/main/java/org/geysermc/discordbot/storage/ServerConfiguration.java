@@ -51,6 +51,7 @@ public class ServerConfiguration {
     }
 
     public static final Configuration<List<String>> ALLOWED_INVITES = registerStrings("allowed-invites", "Allowed Invites");
+    public static final Configuration<Role> AUDIT_ROLE = registerRole("audit-role", "Audit Role");
     public static final Configuration<List<String>> BLOCKED_DOMAINS = registerStrings("banned-domains", "Banned Domains");
     public static final Configuration<List<String>> BLOCKED_IPS = registerStrings("banned-ips", "Banned IPs");
     public static final Configuration<List<String>> CHECK_DOMAINS = registerStrings("check-domains", "Check Domains");
@@ -72,7 +73,9 @@ public class ServerConfiguration {
     public static final Configuration<NewsChannel> PREVIEW_FEEDS_CHANNEL = registerChannel("preview-feeds-channel", "Preview Feeds Channel", NewsChannel.class);
     public static final Configuration<String> PUNISHMENT_MESSAGE = registerString("punishment-message", "Punishment Message");
     public static final Configuration<List<Role>> RANK_ROLES = registerRoles("rank-roles", "Rank Roles");
-    public static final Configuration<Map<String, TextChannel>> RSS_FEEDS = registerChannelMap("rss-feeds", "RSS Feeds", TextChannel.class);
+    public static final Configuration<List<TextChannel>> RSS_FEED_CHANNELS = registerChannels("rss-feeds-channels", "RSS Feeds Channels", TextChannel.class);
+    public static final Configuration<List<String>> RSS_FEED_LINKS = registerStrings("rss-feeds-links", "RSS Feeds Links");
+    public static final Configuration<String> TAG_REPO = registerString("tag-repo", "Tag Repo");
     public static final Configuration<List<Role>> TICKET_ALLOWED_ROLES = registerRoles("ticket-allowed-roles", "Ticket Allowed Roles");
     public static final Configuration<TextChannel> TICKET_ARCHIVE_CHANNEL = registerChannel("ticket-archive-channel", "Ticket Archive Channel", TextChannel.class);
     public static final Configuration<List<Category>> TICKET_CATEGORIES = registerChannels("ticket-categories", "Ticket Categories", Category.class);
@@ -175,75 +178,6 @@ public class ServerConfiguration {
                 List<T> list = get(guild);
                 if (list == null) return false;
                 return list.contains(val);
-            }
-        };
-        ALL_CONFIGS.add(config);
-        return config;
-    }
-
-    private static <T extends GuildChannel> Configuration<Map<String, T>> registerChannelMap(String key, String name, Class<T> type) {
-        Configuration<Map<String, T>> config = new Configuration<>() {
-            @Override
-            public Map<String, T> get(Guild guild) {
-                String mapData = GeyserBot.storageManager.getServerPreference(guild.getIdLong(), key);
-
-                if (mapData != null) {
-                    Map<String, T> map = new HashMap<>();
-                    for (String entry : mapData.split(",")) {
-                        String[] entryData = entry.split("\\|");
-                        T channel = guild.getChannelById(type, entryData[1]);
-                        if (channel == null) continue;
-                        map.put(entryData[0], channel);
-                    }
-                    return map;
-                }
-
-                return null;
-            }
-
-            @Override
-            public void set(Guild guild, Map<String, T> val) {
-                String storeValue = val == null ? null : val.entrySet().stream()
-                                                         .map(entry -> "%s|%s".formatted(entry.getKey(), entry.getValue().getId()))
-                                                         .collect(Collectors.joining(","));
-                GeyserBot.storageManager.setServerPreference(guild.getIdLong(), key, (storeValue == null || storeValue.isEmpty()) ? null : storeValue);
-            }
-
-            @Override
-            public String getKey() {
-                return key;
-            }
-
-            @Override
-            public String getName() {
-                return name;
-            }
-
-            @Override
-            public Class<T> getType() {
-                return type;
-            }
-
-            @Override
-            public ConfigType getConfigType() {
-                return ConfigType.MAP;
-            }
-
-            @Override
-            public String getDisplay(Guild guild) {
-                Map<String, T> val = get(guild);
-                if (val == null) return "null";
-                String displayValue = val.entrySet().stream()
-                        .map(entry -> "%s|%s".formatted(entry.getKey(), entry.getValue().getId()))
-                        .collect(Collectors.joining(", "));
-                return displayValue.isEmpty() ? "null" : displayValue;
-            }
-
-            @Override
-            public boolean isOrContains(Guild guild, Object val) {
-                Map<String, T> map = get(guild);
-                if (map == null) return false;
-                return map.containsValue(val);
             }
         };
         ALL_CONFIGS.add(config);
@@ -457,7 +391,9 @@ public class ServerConfiguration {
         }
 
         default String getDisplay(Guild guild) {
-            return get(guild).toString();
+            T val = get(guild);
+            if (val == null) return "null";
+            return val.toString();
         }
 
         default boolean isOrContains(Guild guild, Object val) {
@@ -483,7 +419,6 @@ public class ServerConfiguration {
 
     public enum ConfigType {
         SINGLE,
-        MULTIPLE,
-        MAP
+        MULTIPLE
     }
 }

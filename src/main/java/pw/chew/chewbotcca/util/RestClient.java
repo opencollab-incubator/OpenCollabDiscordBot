@@ -28,7 +28,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -149,6 +152,18 @@ public class RestClient {
                 LoggerFactory.getLogger(RestClient.class).debug("Response is " + body);
             }
             return new Response(code, body);
+        } catch (IOException | InterruptedException e) {
+            // Rethrow exceptions as runtime
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    public static BufferedImage getImage(String url) {
+        try {
+            HttpResponse<InputStream> response = client.send(HttpRequest.newBuilder(URI.create(url))
+                    .header("User-Agent", USER_AGENT)
+                    .timeout(timeout).build(), HttpResponse.BodyHandlers.ofInputStream());
+            return ImageIO.read(response.body());
         } catch (IOException | InterruptedException e) {
             // Rethrow exceptions as runtime
             throw new RuntimeException(e.getMessage());

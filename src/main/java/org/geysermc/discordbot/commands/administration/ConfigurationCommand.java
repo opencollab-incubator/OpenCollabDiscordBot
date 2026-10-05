@@ -31,6 +31,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.EntitySelectMenu;
+import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 import net.dv8tion.jda.api.entities.Role;
@@ -115,7 +116,7 @@ public class ConfigurationCommand extends BotSlashCommand {
                 if (!configuration.getKey().equals(key)) continue;
 
                 event.replyEmbeds(new EmbedBuilder()
-                        .setTitle("Setting value")
+                        .setTitle("Config value")
                         .addField("Key", "`%s`".formatted(key), false)
                         .addField("Value", configuration.getDisplay(event.getGuild()), false)
                         .build()).queue();
@@ -127,7 +128,7 @@ public class ConfigurationCommand extends BotSlashCommand {
             String value = GeyserBot.storageManager.getServerPreference(event.getGuild().getIdLong(), key);
 
             event.replyEmbeds(new EmbedBuilder()
-                    .setTitle("Setting value")
+                    .setTitle("Config value")
                     .addField("Key", "`%s`".formatted(key), false)
                     .addField("Value", value == null ? "`null`" : "`%s`".formatted(value), false)
                     .build()).queue();
@@ -166,6 +167,8 @@ public class ConfigurationCommand extends BotSlashCommand {
             }
 
             Modal.Builder builder = Modal.create("config-set-%s".formatted(key), configuration.getName());
+
+            builder.addComponents(TextDisplay.of("## Using the web panel is advised when setting config options."));
 
             switch (configuration.getConfigType()) {
                 case SINGLE -> {
@@ -221,40 +224,6 @@ public class ConfigurationCommand extends BotSlashCommand {
                                 Label.of(
                                         "Select channels:",
                                         EntitySelectMenu.create("multi-channel-input", EntitySelectMenu.SelectTarget.CHANNEL)
-                                                .setChannelTypes(typeFromClass(channelClazz))
-                                                .setMinValues(1).setMaxValues(25)
-                                                .build()
-                                )
-                        );
-                    }
-                }
-                case MAP -> {
-                    builder.addComponents(Label.of(
-                            "Enter keys: (Separated by a comma)",
-                            TextInput.of("key-input", TextInputStyle.PARAGRAPH)
-                    ));
-                    if (configuration.getType() == String.class) {
-                        builder.addComponents(
-                                Label.of(
-                                        "Enter values: (Separated by a comma)",
-                                        TextInput.of("map-text-input", TextInputStyle.SHORT)
-                                )
-                        );
-                    } else if (configuration.getType() == Role.class) {
-                        builder.addComponents(
-                                Label.of(
-                                        "Select roles:",
-                                        EntitySelectMenu.create("map-role-input", EntitySelectMenu.SelectTarget.ROLE)
-                                                .setMinValues(1).setMaxValues(25)
-                                                .build()
-                                )
-                        );
-                    } else if (GuildChannel.class.isAssignableFrom(configuration.getType())) {
-                        Class<? extends GuildChannel> channelClazz = (Class<? extends GuildChannel>) configuration.getType();
-                        builder.addComponents(
-                                Label.of(
-                                        "Select channels:",
-                                        EntitySelectMenu.create("map-channel-input", EntitySelectMenu.SelectTarget.CHANNEL)
                                                 .setChannelTypes(typeFromClass(channelClazz))
                                                 .setMinValues(1).setMaxValues(25)
                                                 .build()

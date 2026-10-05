@@ -25,6 +25,9 @@
 
 package org.geysermc.discordbot.http.html;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+
 public abstract class HtmlPage extends Element {
     public HtmlPage() {
         super("html");
@@ -42,4 +45,9 @@ public abstract class HtmlPage extends Element {
     public abstract void appendHead(Element head);
 
     public abstract void appendBody(Element body);
+
+    @Override
+    public String render(HttpServletRequest request, OAuth2User principal) {
+        return "<!doctype html>" + super.render(request, principal);
+    }
 }

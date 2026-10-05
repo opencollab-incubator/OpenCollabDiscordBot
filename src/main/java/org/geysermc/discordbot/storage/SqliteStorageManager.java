@@ -25,13 +25,13 @@
 
 package org.geysermc.discordbot.storage;
 
+import com.google.gson.Gson;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.permissions.MemberRank;
 import org.geysermc.discordbot.permissions.MemberRolePermissions;
 import org.geysermc.discordbot.permissions.UserPermissions;
@@ -44,11 +44,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SqliteStorageManager extends MySQLStorageManager {
 
@@ -58,20 +55,29 @@ public class SqliteStorageManager extends MySQLStorageManager {
         connection = DriverManager.getConnection("jdbc:sqlite:" + PropertiesManager.getDatabase());
 
         Statement createTables = connection.createStatement();
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `preferences` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `key` VARCHAR(32), `value` TEXT NOT NULL, CONSTRAINT `pref_constraint` UNIQUE (`server`,`key`));");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `preferences` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `key` VARCHAR(32), `value` TEXT, CONSTRAINT `pref_constraint` UNIQUE (`server`,`key`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `persistent_roles` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `role` INTEGER NOT NULL, CONSTRAINT `role_constraint` UNIQUE (`server`,`user`,`role`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `mod_log` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `action` VARCHAR(32) NOT NULL, `target` INTEGER NOT NULL, `reason` TEXT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `levels` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `user` INTEGER NOT NULL, `level` INT NOT NULL, `xp` INT NOT NULL, `messages` INT NOT NULL, CONSTRAINT `level_constraint` UNIQUE (`server`,`user`));");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `slow_mode` (`channel` INTEGER NOT NULL PRIMARY KEY, `server` INTEGER NOT NULL, `delay` INT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `tickets` (`client_id` VARCHAR(32) NOT NULL PRIMARY KEY, `id` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `appeals` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `server` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `message` TEXT NOT NULL, `state` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_permissions` (`user` INTEGER NOT NULL PRIMARY KEY, `permissions` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_role_permissions` (`snowflake` INTEGER NOT NULL PRIMARY KEY, `permissions` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ordinal` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `appeals` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `action_time` INTEGER NOT NULL, `time` INTEGER NOT NULL, `user` INTEGER NOT NULL, `message` TEXT NOT NULL, `state` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_permissions` (`user` INTEGER NOT NULL PRIMARY KEY, `permissions` TEXT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_role_permissions` (`guild_snowflake` TEXT NOT NULL PRIMARY KEY, `permissions` TEXT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `user_ranks` (`user` INTEGER NOT NULL PRIMARY KEY, `ranks` TEXT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `member_ranks` (`guild_member` TEXT NOT NULL PRIMARY KEY, `ranks` TEXT NOT NULL);");
         createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `auth_sessions` (`token_hash` VARCHAR(64) NOT NULL PRIMARY KEY, `user` INTEGER NOT NULL, `attributes` TEXT NOT NULL, `expires_at` INTEGER NOT NULL);");
-        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `bans` (`user` INTEGER NOT NULL PRIMARY KEY, `issued_on` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `bans` (`user` INTEGER NOT NULL PRIMARY KEY, `issued_on` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, `reason` TEXT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `ticket_metadata` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `guild_id` INTEGER NOT NULL, `channel_id` INTEGER, `created_at` INTEGER NOT NULL, `ticket_number` VARCHAR(32) NOT NULL, `client_id` VARCHAR(64) NOT NULL, `client_name` VARCHAR(255) NOT NULL, `client_role_id` VARCHAR(32) NOT NULL, `type` VARCHAR(32) NOT NULL, `state` INTEGER NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `ticket_log` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `ticket_id` INTEGER NOT NULL, `time` INTEGER NOT NULL, `line` TEXT NOT NULL);");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `ticket_messages` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `ticket_id` INTEGER NOT NULL, `message_id` INTEGER NOT NULL, `author_id` INTEGER NOT NULL, `author_name` VARCHAR(255) NOT NULL, `author_avatar_url` TEXT, `content` TEXT NOT NULL, `attachments` TEXT NOT NULL, `sent_at` INTEGER NOT NULL, `edited` INTEGER NOT NULL, `deleted` INTEGER NOT NULL, CONSTRAINT `ticket_message_constraint` UNIQUE (`ticket_id`,`message_id`));");
+        createTables.executeUpdate("CREATE TABLE IF NOT EXISTS `bad_images` (`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `similarity_hash` TEXT NOT NULL, `b64_source` TEXT NOT NULL);");
         createTables.close();
+    }
+
+    @Override
+    protected void checkConnection() {
+        // No need in SQLite
     }
 
     @Override
@@ -106,7 +112,9 @@ public class SqliteStorageManager extends MySQLStorageManager {
             updatePreferenceValue.setString(2, preference);
             updatePreferenceValue.setString(3, value);
             updatePreferenceValue.executeUpdate();
-        } catch (SQLException ignored) { }
+        } catch (SQLException ignored) {
+            ignored.printStackTrace();
+        }
     }
 
     @Override
@@ -354,12 +362,30 @@ public class SqliteStorageManager extends MySQLStorageManager {
     }
 
     @Override
+    public void saveTicketMessage(TicketChatMessage message) {
+        try (PreparedStatement saveMessage = connection.prepareStatement(
+                "INSERT OR REPLACE INTO `ticket_messages` (`ticket_id`, `message_id`, `author_id`, `author_name`, `author_avatar_url`, `content`, `attachments`, `sent_at`, `edited`, `deleted`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);")) {
+            saveMessage.setInt(1, message.ticketId());
+            saveMessage.setLong(2, message.messageId());
+            saveMessage.setLong(3, message.authorId());
+            saveMessage.setString(4, message.authorName());
+            saveMessage.setString(5, message.authorAvatarUrl());
+            saveMessage.setString(6, message.content());
+            saveMessage.setString(7, new Gson().toJson(message.attachments()));
+            saveMessage.setLong(8, message.sentAt().getEpochSecond());
+            saveMessage.setInt(9, message.edited() ? 1 : 0);
+            saveMessage.setInt(10, message.deleted() ? 1 : 0);
+            saveMessage.executeUpdate();
+        } catch (SQLException ignored) { }
+    }
+
+    @Override
     public void setMemberPermissions(Member member, MemberRolePermissions[] permissions) {
         try (PreparedStatement updateLevelValue = connection.prepareStatement(
-                "INSERT OR REPLACE INTO `member_role_permissions` (`snowflake`, `permissions`) VALUES (?, ?);")) {
-            int value = MemberRolePermissions.getRawValue(permissions);
-            updateLevelValue.setLong(1, member.getIdLong());
-            updateLevelValue.setInt(2, value);
+                "INSERT OR REPLACE INTO `member_role_permissions` (`guild_snowflake`, `permissions`) VALUES (?, ?);")) {
+            String value = Arrays.stream(permissions).map(MemberRolePermissions::name).collect(Collectors.joining(","));
+            updateLevelValue.setString(1, member.getGuild().getId() + "_" + member.getId());
+            updateLevelValue.setString(2, value);
             updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
@@ -367,10 +393,10 @@ public class SqliteStorageManager extends MySQLStorageManager {
     @Override
     public void setRolePermissions(Role role, MemberRolePermissions[] permissions) {
         try (PreparedStatement updateLevelValue = connection.prepareStatement(
-                "INSERT OR REPLACE INTO `member_role_permissions` (`snowflake`, `permissions`) VALUES (?, ?);")) {
-            int value = MemberRolePermissions.getRawValue(permissions);
-            updateLevelValue.setLong(1, role.getIdLong());
-            updateLevelValue.setInt(2, value);
+                "INSERT OR REPLACE INTO `member_role_permissions` (`guild_snowflake`, `permissions`) VALUES (?, ?);")) {
+            String value = Arrays.stream(permissions).map(MemberRolePermissions::name).collect(Collectors.joining(","));
+            updateLevelValue.setString(1, role.getGuild().getId() + "_" + role.getId());
+            updateLevelValue.setString(2, value);
             updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
@@ -379,31 +405,31 @@ public class SqliteStorageManager extends MySQLStorageManager {
     public void setUserPermissions(User user, UserPermissions[] permissions) {
         try (PreparedStatement updateLevelValue = connection.prepareStatement(
                 "INSERT OR REPLACE INTO `user_permissions` (`user`, `permissions`) VALUES (?, ?);")) {
-            int value = UserPermissions.getRawValue(permissions);
+            String value = Arrays.stream(permissions).map(UserPermissions::name).collect(Collectors.joining(","));
             updateLevelValue.setLong(1, user.getIdLong());
-            updateLevelValue.setInt(2, value);
+            updateLevelValue.setString(2, value);
             updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
-    public void setUserRank(User user, UserRank rank) {
+    public void setUserRanks(User user, UserRank[] ranks) {
         try (PreparedStatement updateLevelValue = connection.prepareStatement(
-                "INSERT OR REPLACE INTO `user_ranks` (`user`, `ordinal`) VALUES (?, ?);")) {
-            int value = rank.ordinal();
+                "INSERT OR REPLACE INTO `user_ranks` (`user`, `ranks`) VALUES (?, ?);")) {
+            String value = Arrays.stream(ranks).map(UserRank::name).collect(Collectors.joining(","));
             updateLevelValue.setLong(1, user.getIdLong());
-            updateLevelValue.setInt(2, value);
+            updateLevelValue.setString(2, value);
             updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
-    public void setMemberRank(Member member, MemberRank rank) {
+    public void setMemberRanks(Member member, MemberRank[] ranks) {
         try (PreparedStatement updateLevelValue = connection.prepareStatement(
-                "INSERT OR REPLACE INTO `member_ranks` (`user`, `ordinal`) VALUES (?, ?);")) {
-            int value = rank.ordinal();
-            updateLevelValue.setLong(1, member.getIdLong());
-            updateLevelValue.setInt(2, value);
+                "INSERT OR REPLACE INTO `member_ranks` (`guild_member`, `ranks`) VALUES (?, ?);")) {
+            String value = Arrays.stream(ranks).map(MemberRank::name).collect(Collectors.joining(","));
+            updateLevelValue.setString(1, member.getGuild().getId() + "_" + member.getId());
+            updateLevelValue.setString(2, value);
             updateLevelValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
@@ -451,47 +477,55 @@ public class SqliteStorageManager extends MySQLStorageManager {
     }
 
     @Override
-    public CompletableFuture<Map<User, List<Appeal>>> getCurrentAppeals() {
-        return CompletableFuture.supplyAsync(() -> {
-            Map<User, List<Appeal>> appeals = new LinkedHashMap<>();
+    public int addAppeal(UserSnowflake user, String message) {
+        try {
+            long time = Instant.now().getEpochSecond();
 
-            try {
-                Statement getLogEntry = connection.createStatement();
-                ResultSet rs = getLogEntry.executeQuery("SELECT `id`, `server`, `time`, `user`, `message`, `state` FROM `appeals` ORDER BY `time`;");
+            try (PreparedStatement addAppealEntry = connection.prepareStatement(
+                    "INSERT OR REPLACE INTO `appeals` (`user`, `action_time`, `time`, `message`, `state`) VALUES (?, ?, ?, ?, ?);")) {
+                addAppealEntry.setLong(1, user.getIdLong());
+                addAppealEntry.setLong(2, -1);
+                addAppealEntry.setLong(3, time);
+                addAppealEntry.setString(4, message);
+                addAppealEntry.setInt(5, Appeal.State.PENDING.ordinal());
+                addAppealEntry.executeUpdate();
+            }
 
-                while (rs.next()) {
-                    Guild guild = GeyserBot.getJDA().getGuildById(rs.getString("server"));
-                    String userId = rs.getString("user");
-                    User user = GeyserBot.getJDA().getUserById(userId);
-                    if (user == null) {
-                        user = GeyserBot.getJDA().retrieveUserById(userId).complete();
+            try (PreparedStatement getAppealEntry = connection.prepareStatement(
+                    "SELECT `id` FROM `appeals` WHERE `user`=? AND `action_time`=? AND `time`=? AND `message`=? AND `state`=? LIMIT 1;")) {
+                getAppealEntry.setLong(1, user.getIdLong());
+                getAppealEntry.setLong(2, -1);
+                getAppealEntry.setLong(3, time);
+                getAppealEntry.setString(4, message);
+                getAppealEntry.setInt(5, Appeal.State.PENDING.ordinal());
+
+                try (ResultSet rs = getAppealEntry.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt("id");
                     }
-
-                    appeals.computeIfAbsent(user, ignored -> new ArrayList<>()).add(
-                            new Appeal(Instant.ofEpochSecond(rs.getLong("time")), guild, rs.getString("message"), Appeal.State.values()[rs.getInt("state")])
-                    );
                 }
+            }
+        } catch (SQLException ignored) { }
 
-                getLogEntry.close();
-            } catch (SQLException ignored) { }
-
-            return appeals;
-        });
+        return -1;
     }
 
     @Override
-    public List<Appeal> getCurrentAppeals(User user) {
+    public List<Appeal> getAppeals(UserSnowflake user, int limit) {
         List<Appeal> appeals = new ArrayList<>();
 
-        try (PreparedStatement getLogEntry = connection.prepareStatement(
-                "SELECT `id`, `server`, `time`, `user`, `message`, `state` FROM `appeals` WHERE `user`=? ORDER BY `time`;")) {
-            getLogEntry.setLong(1, user.getIdLong());
+        try (PreparedStatement getAppealEntry = connection.prepareStatement(
+                "SELECT `id`, `action_time`, `time`, `message`, `state` FROM `appeals` WHERE `user`=? ORDER BY `time` ASC LIMIT ?;")) {
+            getAppealEntry.setLong(1, user.getIdLong());
+            getAppealEntry.setInt(2, limit);
 
-            try (ResultSet rs = getLogEntry.executeQuery()) {
+            try (ResultSet rs = getAppealEntry.executeQuery()) {
                 while (rs.next()) {
-                    Guild guild = GeyserBot.getJDA().getGuildById(rs.getString("server"));
+                    long actionTimeEpoch = rs.getLong("action_time");
+                    Instant actionTime = Instant.ofEpochSecond(actionTimeEpoch);
+                    Instant time = Instant.ofEpochSecond(rs.getLong("time"));
 
-                    appeals.add(new Appeal(Instant.ofEpochSecond(rs.getLong("time")), guild, rs.getString("message"), Appeal.State.values()[rs.getInt("state")]));
+                    appeals.add(new Appeal(rs.getInt("id"), user, time, actionTime, rs.getString("message"), Appeal.State.values()[rs.getInt("state")]));
                 }
             }
         } catch (SQLException ignored) { }
@@ -500,28 +534,70 @@ public class SqliteStorageManager extends MySQLStorageManager {
     }
 
     @Override
-    public void addAppeal(User user, Appeal appeal) {
-        try (PreparedStatement addAppeal = connection.prepareStatement(
-                "INSERT INTO `appeals` (`server`, `time`, `user`, `message`, `state`) VALUES (?, ?, ?, ?, ?);")) {
-            long time = appeal.creationTime().getEpochSecond();
-            addAppeal.setLong(1, appeal.appealingFrom().getIdLong());
-            addAppeal.setLong(2, time);
-            addAppeal.setLong(3, user.getIdLong());
-            addAppeal.setString(4, appeal.message());
-            addAppeal.setInt(5, appeal.state().ordinal());
-            addAppeal.executeUpdate();
+    public List<Appeal> getAppeals(int limit) {
+        List<Appeal> appeals = new ArrayList<>();
+
+        try (PreparedStatement getAppealEntry = connection.prepareStatement(
+                "SELECT `id`, `user`, `action_time`, `time`, `message`, `state` FROM `appeals` ORDER BY `time` ASC LIMIT ?;")) {
+            getAppealEntry.setInt(1, limit);
+
+            try (ResultSet rs = getAppealEntry.executeQuery()) {
+                while (rs.next()) {
+                    long actionTimeEpoch = rs.getLong("action_time");
+                    Instant actionTime = Instant.ofEpochSecond(actionTimeEpoch);
+                    Instant time = Instant.ofEpochSecond(rs.getLong("time"));
+
+                    appeals.add(new Appeal(rs.getInt("id"), User.fromId(rs.getLong("user")), time, actionTime, rs.getString("message"), Appeal.State.values()[rs.getInt("state")]));
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return appeals;
+    }
+
+    @Override
+    public Appeal getAppeal(int id) {
+        try (PreparedStatement getLogEntry = connection.prepareStatement(
+                "SELECT `action_time`, `time`, `user`, `message`, `state` FROM `appeals` WHERE `id`=?;")) {
+            getLogEntry.setInt(1, id);
+
+            try (ResultSet rs = getLogEntry.executeQuery()) {
+                if (rs.next()) {
+                    long actionTimeEpoch = rs.getLong("action_time");
+                    Instant actionTime = Instant.ofEpochSecond(actionTimeEpoch);
+                    Instant time = Instant.ofEpochSecond(rs.getLong("time"));
+                    UserSnowflake user = User.fromId(rs.getLong("user"));
+
+                    return new Appeal(id, user, time, actionTime, rs.getString("message"), Appeal.State.values()[rs.getInt("state")]);
+                }
+            }
+        } catch (SQLException ignored) { }
+
+        return null;
+    }
+
+    @Override
+    public void updateAppeal(int id, Appeal.State state) {
+        try (PreparedStatement updateAppealValue = connection.prepareStatement(
+                "UPDATE `appeals` SET `state`=?, `action_time`=? WHERE `id`=?;")) {
+            updateAppealValue.setInt(1, state.ordinal());
+            updateAppealValue.setLong(2, Instant.now().getEpochSecond());
+            updateAppealValue.setInt(3, id);
+            updateAppealValue.executeUpdate();
         } catch (SQLException ignored) { }
     }
 
     @Override
     public MemberRolePermissions[] getMemberPermissions(Member member) {
         try (PreparedStatement getPermissions = connection.prepareStatement(
-                "SELECT `permissions` FROM `member_role_permissions` WHERE `snowflake`=?;")) {
-            getPermissions.setLong(1, member.getIdLong());
+                "SELECT `permissions` FROM `member_role_permissions` WHERE `guild_snowflake`=?;")) {
+            getPermissions.setString(1, member.getGuild().getId() + "_" + member.getId());
 
             try (ResultSet rs = getPermissions.executeQuery()) {
                 if (rs.next()) {
-                    return MemberRolePermissions.fromRawValue(rs.getInt("permissions"));
+                    String permissions = rs.getString("permissions");
+                    if (permissions.isEmpty()) return new MemberRolePermissions[0];
+                    return Arrays.stream(permissions.split(",")).map(MemberRolePermissions::valueOf).toArray(MemberRolePermissions[]::new);
                 }
             }
         } catch (SQLException ignored) { }
@@ -532,12 +608,14 @@ public class SqliteStorageManager extends MySQLStorageManager {
     @Override
     public MemberRolePermissions[] getRolePermissions(Role role) {
         try (PreparedStatement getPermissions = connection.prepareStatement(
-                "SELECT `permissions` FROM `member_role_permissions` WHERE `snowflake`=?;")) {
-            getPermissions.setLong(1, role.getIdLong());
+                "SELECT `permissions` FROM `member_role_permissions` WHERE `guild_snowflake`=?;")) {
+            getPermissions.setString(1, role.getGuild().getId() + "_" + role.getId());
 
             try (ResultSet rs = getPermissions.executeQuery()) {
                 if (rs.next()) {
-                    return MemberRolePermissions.fromRawValue(rs.getInt("permissions"));
+                    String permissions = rs.getString("permissions");
+                    if (permissions.isEmpty()) return new MemberRolePermissions[0];
+                    return Arrays.stream(permissions.split(",")).map(MemberRolePermissions::valueOf).toArray(MemberRolePermissions[]::new);
                 }
             }
         } catch (SQLException ignored) { }
@@ -553,7 +631,9 @@ public class SqliteStorageManager extends MySQLStorageManager {
 
             try (ResultSet rs = getPermissions.executeQuery()) {
                 if (rs.next()) {
-                    return UserPermissions.fromRawValue(rs.getInt("permissions"));
+                    String permissions = rs.getString("permissions");
+                    if (permissions.isEmpty()) return new UserPermissions[0];
+                    return Arrays.stream(permissions.split(",")).map(UserPermissions::valueOf).toArray(UserPermissions[]::new);
                 }
             }
         } catch (SQLException ignored) { }
@@ -562,44 +642,13 @@ public class SqliteStorageManager extends MySQLStorageManager {
     }
 
     @Override
-    public UserRank getUserRank(User user) {
-        try (PreparedStatement getRank = connection.prepareStatement(
-                "SELECT `ordinal` FROM `user_ranks` WHERE `user`=?;")) {
-            getRank.setLong(1, user.getIdLong());
-
-            try (ResultSet rs = getRank.executeQuery()) {
-                if (rs.next()) {
-                    return UserRank.values()[rs.getInt("ordinal")];
-                }
-            }
-        } catch (SQLException ignored) { }
-
-        return UserRank.NONE;
-    }
-
-    @Override
-    public MemberRank getMemberRank(Member member) {
-        try (PreparedStatement getRank = connection.prepareStatement(
-                "SELECT `ordinal` FROM `member_ranks` WHERE `user`=?;")) {
-            getRank.setLong(1, member.getIdLong());
-
-            try (ResultSet rs = getRank.executeQuery()) {
-                if (rs.next()) {
-                    return MemberRank.values()[rs.getInt("ordinal")];
-                }
-            }
-        } catch (SQLException ignored) { }
-
-        return MemberRank.MEMBER;
-    }
-
-    @Override
     public void addBan(BanData data) {
         try (PreparedStatement addBan = connection.prepareStatement(
-                "INSERT OR REPLACE INTO `bans` (`user`, `issued_on`, `expires_at`) VALUES (?, ?, ?);")) {
+                "INSERT OR REPLACE INTO `bans` (`user`, `issued_on`, `expires_at`, `reason`) VALUES (?, ?, ?, ?);")) {
             addBan.setLong(1, data.userId());
             addBan.setLong(2, data.issuedOn().getEpochSecond());
             addBan.setLong(3, data.expiryTime() == null ? -1 : data.expiryTime().getEpochSecond());
+            addBan.setString(4, data.reason());
             addBan.executeUpdate();
         } catch (SQLException ignored) { }
     }
@@ -615,13 +664,13 @@ public class SqliteStorageManager extends MySQLStorageManager {
     @Override
     public BanData getBan(long userId) {
         try (PreparedStatement getBan = connection.prepareStatement(
-                "SELECT (`issued_on`, `expires_at`) FROM `bans` WHERE `user`=?;")) {
+                "SELECT `issued_on`, `expires_at`, `reason` FROM `bans` WHERE `user`=?;")) {
             getBan.setLong(1, userId);
 
             try (ResultSet rs = getBan.executeQuery()) {
                 if (rs.next()) {
                     long time = rs.getLong("expires_at");
-                    return new BanData(userId, Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time));
+                    return new BanData(userId, Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time), rs.getString("reason"));
                 }
             }
         } catch (SQLException ignored) { }
@@ -636,7 +685,7 @@ public class SqliteStorageManager extends MySQLStorageManager {
             try (ResultSet rs = getBans.executeQuery()) {
                 while (rs.next()) {
                     long time = rs.getLong("expires_at");
-                    bans.add(new BanData(rs.getLong("user"), Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time)));
+                    bans.add(new BanData(rs.getLong("user"), Instant.ofEpochSecond(rs.getLong("issued_on")), time == -1 ? null : Instant.ofEpochSecond(time), rs.getString("reason")));
                 }
             }
         } catch (SQLException ignored) { }

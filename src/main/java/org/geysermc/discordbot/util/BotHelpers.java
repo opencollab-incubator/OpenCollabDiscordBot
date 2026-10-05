@@ -214,7 +214,8 @@ public class BotHelpers {
 
         if (dirURL.getProtocol().equals("jar")) {
             /* A JAR path */
-            String jarPath = dirURL.getPath().substring(5, dirURL.getPath().indexOf("!")); //strip out only the JAR file
+            int beginIndex = dirURL.getPath().startsWith("nested:") ? 7 : 5;
+            String jarPath = dirURL.getPath().substring(beginIndex, dirURL.getPath().indexOf("!")); //strip out only the JAR file
             JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8));
             Enumeration<JarEntry> entries = jar.entries(); //gives ALL entries in jar
             Set<String> result = new HashSet<>(); //avoid duplicates in case it is a subdirectory

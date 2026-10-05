@@ -26,10 +26,51 @@
 package org.geysermc.discordbot.http.pages.elements;
 
 import org.geysermc.discordbot.http.html.Element;
+import org.geysermc.discordbot.http.html.FAIcon;
 import org.geysermc.discordbot.storage.BanData;
 
 public class BanCard extends Element {
-    public BanCard(BanData banData) {
+    public BanCard(BanData banData, boolean hasPendingAppeal) {
         super("div");
+
+        Element expiresOn = Element.of("p")
+                .addSafeInnerElement("Expires ");
+        if (banData.expiryTime() == null) {
+            expiresOn.addSafeInnerElement("Never");
+        } else {
+            expiresOn.addInnerElement(Element.dynamicTimeDisplay(banData.expiryTime()));
+        }
+
+        this.addClass("flex grow max-w-md flex-col overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-900 shadow-sm mb-2");
+        this.addInnerElement(
+                Element.of("div")
+                        .addClass("flex items-stretch gap-4 p-4")
+                        .addInnerElement(
+                                Element.div("flex min-w-0 flex-col justify-center")
+                                        .addInnerElement(
+                                                Element.of("h3", "mb-2 text-lg font-semibold")
+                                                        .addInnerElement(new FAIcon("hammer"))
+                                                        .addInnerElement(" Active ban")
+                                        )
+                                        .addInnerElement(
+                                                Element.of("p", "text-sm leading-relaxed text-gray-700 dark:text-gray-300")
+                                                        .addInnerElement(Element.of("p")
+                                                                .addSafeInnerElement("Issued On ")
+                                                                .addInnerElement(Element.of("span")
+                                                                        .addClass("time-display")
+                                                                        .addField("data-time", String.valueOf(banData.issuedOn().getEpochSecond()))
+                                                                        .addSafeInnerElement("Loading...")))
+                                                        .addInnerElement(expiresOn)
+                                        )
+                        )
+        );
+
+        if (!hasPendingAppeal) {
+            Element buttonContainer = Element.div("flex gap-2 px-4 pb-4");
+
+            buttonContainer.addInnerElement(new LinkButton("Appeal", "/appeals/create"));
+
+            this.addInnerElement(buttonContainer);
+        }
     }
 }

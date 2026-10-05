@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2022 GeyserMC. http://geysermc.org
+ * Copyright (c) 2020-2026 Open Collaboration. https://opencollaboration.dev, GeyserMC. https://geysermc.org
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -19,21 +19,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  *
- * @author GeyserMC
- * @link https://github.com/GeyserMC/GeyserDiscordBot
+ * @author OpenCollab, GeyserMC
+ * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.commands;
+package org.geysermc.discordbot.commands.tag;
 
-import com.jagrosh.jdautilities.command.Command;
 import com.jagrosh.jdautilities.command.CommandEvent;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.interactions.InteractionContextType;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.commands.filter.FilteredSlashCommand;
-import org.geysermc.discordbot.tags.TagsManager;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.PropertiesManager;
 
@@ -47,7 +48,7 @@ public class TagsCommand extends FilteredSlashCommand {
         this.name = "tags";
         this.arguments = "[search]";
         this.help = "List all the known (non-alias) tags";
-        this.guildOnly = false;
+        this.contexts = new InteractionContextType[]{InteractionContextType.GUILD};
 
         this.options = Collections.singletonList(
                 new OptionData(OptionType.STRING, "search", "The term you want to search for")
@@ -58,7 +59,7 @@ public class TagsCommand extends FilteredSlashCommand {
     protected void executeFiltered(SlashCommandEvent event) {
         String search = event.optString("search", "");
 
-        event.replyEmbeds(handle(search)).queue();
+        event.replyEmbeds(handle(search, event.getGuild())).queue();
     }
 
     @Override
@@ -71,17 +72,17 @@ public class TagsCommand extends FilteredSlashCommand {
             search = args.get(0);
         }
 
-        event.getMessage().replyEmbeds(handle(search)).queue();
+        event.getMessage().replyEmbeds(handle(search, event.getGuild())).queue();
     }
 
-    protected MessageEmbed handle(String search) {
+    protected MessageEmbed handle(String search, Guild guild) {
         EmbedBuilder embed = new EmbedBuilder();
 
         // Get tag names based on search
         List<String> tagNames = new ArrayList<>();
-        for (Command tag : TagsManager.getTags()) {
-            if (!tag.getName().equals("alias") && tag.getName().contains(search)) {
-                tagNames.add(tag.getName());
+        for (String tag : GeyserBot.tagManager.getTags(guild).keySet()) {
+            if (!tag.equals("alias") && tag.contains(search)) {
+                tagNames.add(tag);
             }
         }
 
@@ -92,7 +93,7 @@ public class TagsCommand extends FilteredSlashCommand {
             embed.setColor(BotColors.FAILURE.getColor());
             embed.setTitle("No tags found");
             embed.setDescription("No tags were found for your search.");
-            embed.setFooter("Use `" + PropertiesManager.getPrefix() + "tag aliases <name>` to see all the aliases for a certain tag");
+            embed.setFooter("Use `" + PropertiesManager.getPrefix() + "tag <name>` to show a tag");
         } else {
             embed.setColor(BotColors.SUCCESS.getColor());
             embed.setTitle("Tags (" + tagNames.size() + ")");

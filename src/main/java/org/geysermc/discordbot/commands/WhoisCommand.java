@@ -73,10 +73,10 @@ public class WhoisCommand extends BotSlashCommand {
         List<String> args = new ArrayList<>(Arrays.asList(event.getArgs().split(" ")));
 
         Member member;
-        if (args.size() == 0 || args.get(0).isEmpty()) {
+        if (args.isEmpty() || args.getFirst().isEmpty()) {
             member = event.getMember();
         } else {
-            member = BotHelpers.getMember(event.getGuild(), args.remove(0));
+            member = BotHelpers.getMember(event.getGuild(), args.removeFirst());
         }
 
         // Check user is valid
@@ -94,13 +94,14 @@ public class WhoisCommand extends BotSlashCommand {
 
         // Get the roles
         String roles = "None";
-        if (member.getRoles().size() > 0) {
+        if (!member.getRoles().isEmpty()) {
             roles = member.getRoles().stream().map(Role::getAsMention).collect(Collectors.joining(" "));
         }
 
         return new EmbedBuilder()
                 .setAuthor(user.getName(), null, user.getAvatarUrl())
                 .setDescription(user.getAsMention())
+                .addField("Owner", member.isOwner() ? "Yes" : "No", true)
                 .addField("Joined", TimeFormat.DATE_TIME_LONG.format(member.getTimeJoined()), true)
                 .addField("Registered", TimeFormat.DATE_TIME_LONG.format(member.getTimeCreated()), true)
                 .addField("Roles [" + member.getRoles().size() + "]", roles, false)
@@ -108,7 +109,7 @@ public class WhoisCommand extends BotSlashCommand {
                 .setThumbnail(user.getAvatarUrl())
                 .setFooter("ID: " + user.getId())
                 .setTimestamp(Instant.now())
-                .setColor(member.getColor())
+                .setColor(member.getColors().getPrimary())
                 .build();
     }
 }

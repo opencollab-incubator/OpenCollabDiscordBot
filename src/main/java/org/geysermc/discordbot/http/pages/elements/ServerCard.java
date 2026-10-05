@@ -26,72 +26,148 @@
 package org.geysermc.discordbot.http.pages.elements;
 
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.http.html.Element;
+import org.geysermc.discordbot.http.html.FAIcon;
 import org.geysermc.discordbot.permissions.MemberRolePermissions;
 import org.geysermc.discordbot.permissions.PermissionManager;
 import org.geysermc.discordbot.permissions.UserPermissions;
 import org.geysermc.discordbot.storage.ServerModule;
+import org.springframework.web.util.HtmlUtils;
 
 public class ServerCard extends Element {
+    /**
+     * Fallback banner gradients for servers without a Discord banner image, picked per-guild so
+     * a page full of cards doesn't look monotone.
+     */
+    private static final String[] GRADIENTS = {
+            "from-blue-600 to-indigo-600",
+            "from-purple-600 to-pink-600",
+            "from-emerald-600 to-teal-600",
+            "from-orange-500 to-red-600",
+            "from-cyan-600 to-blue-600",
+            "from-fuchsia-600 to-purple-600",
+    };
+
     public ServerCard(Guild guild, User user) {
-        super("div");
+        this(guild, user, false);
+    }
 
-        String iconId = guild.getIconId();
-        if (iconId != null && iconId.startsWith("a_")) iconId = iconId.substring(2);
-        String iconUrl = (iconId == null)
-                ? "https://cdn.discordapp.com/embed/avatars/1.png"
-                : String.format(Guild.ICON_URL, guild.getId(), iconId, "png");
+    public ServerCard(Guild guild, User user, boolean userProfile) {
+        super(userProfile ? "a" : "div");
 
-        this.addClass("flex grow max-w-md flex-col overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-900 shadow-sm");
+        if (userProfile) {
+            this.addField("href", "/user/%s/%s".formatted(user.getId(), guild.getId()));
+        }
+
+        String iconUrl = iconUrl(guild);
+
+        if (userProfile) {
+            buildCompact(guild, iconUrl);
+        } else {
+            buildFull(guild, user, iconUrl);
+        }
+    }
+
+    /**
+     * The small horizontal chip used in "also in these servers" lists (e.g. a user's profile).
+     */
+    private void buildCompact(Guild guild, String iconUrl) {
+        this.addClass("flex items-center gap-3 rounded-xl bg-gray-200 dark:bg-gray-900 shadow-sm p-3 " +
+                "transition hover:shadow-md hover:ring-2 hover:ring-blue-500");
+
+        this.addInnerElement(Element.img(iconUrl, "Server Profile Picture", "w-10 h-10 rounded-full object-cover flex-shrink-0"));
+
         this.addInnerElement(
-                Element.of("div")
-                        .addClass("flex items-stretch gap-4 p-4")
-                        .addInnerElement(Element.img(
-                                iconUrl, "Server Profile Picture",
-                                "h-full w-32 flex-shrink-0 rounded-lg object-cover"
-                        ))
-                        .addInnerElement(
-                                Element.div("flex min-w-0 flex-col justify-center")
-                                        .addInnerElement(
-                                                Element.of("h3", "mb-2 text-lg font-semibold")
-                                                        .addInnerElement(guild.getName())
-                                        )
-                                        .addInnerElement(
-                                                Element.of("p", "text-sm leading-relaxed text-gray-700 dark:text-gray-300")
-                                                        .addInnerElement("Serving " + guild.getMemberCount() + " members")
-                                        )
-                        )
+                Element.of("h3", "min-w-0 flex-1 truncate text-base font-semibold")
+                        .addField("title", HtmlUtils.htmlEscape(guild.getName()))
+                        .addSafeInnerElement(guild.getName())
         );
 
+        this.addInnerElement(new FAIcon("chevron-right").addClass("text-gray-400 dark:text-gray-600"));
+    }
+
+    /**
+     * The full card used on the home page: a banner header with the guild icon overlapping it,
+     * name, member count and module action buttons.
+     */
+    private void buildFull(Guild guild, User user, String iconUrl) {
+        this.addClass("grow max-w-md flex flex-col overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-900 " +
+                "shadow-sm transition duration-200 hover:shadow-lg hover:-translate-y-0.5");
+
+        Element banner = Element.div("h-20 w-full bg-gradient-to-r " + gradientFor(guild));
+        String bannerUrl = guild.getBannerUrl();
+        if (bannerUrl != null) {
+            banner.addField("style", "background-image:url('%s');background-size:cover;background-position:center;".formatted(bannerUrl));
+        }
+        this.addInnerElement(banner);
+
+        this.addInnerElement(
+                Element.div("px-4 -mt-8")
+                        .addInnerElement(Element.img(iconUrl, "Server Profile Picture",
+                                "w-16 h-16 rounded-full object-cover ring-4 ring-gray-200 dark:ring-gray-900 bg-gray-200 dark:bg-gray-900"))
+        );
+
+        this.addInnerElement(
+                Element.div("flex flex-col gap-1 px-4 pt-2 pb-4")
+                        .addInnerElement(Element.of("h3", "text-lg font-semibold truncate")
+                                .addField("title", HtmlUtils.htmlEscape(guild.getName()))
+                                .addSafeInnerElement(guild.getName()))
+                        .addInnerElement(Element.of("p", "flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300")
+                                .addInnerElement(new FAIcon("users").addClass("text-xs"))
+                                .addInnerElement("Serving " + guild.getMemberCount() + (guild.getMemberCount() == 1 ? " member" : " members")))
+        );
+
+        addButtons(guild, user);
+    }
+
+    private static String iconUrl(Guild guild) {
+        String iconId = guild.getIconId();
+        if (iconId != null && iconId.startsWith("a_")) iconId = iconId.substring(2);
+        return (iconId == null)
+                ? "https://cdn.discordapp.com/embed/avatars/1.png"
+                : String.format(Guild.ICON_URL, guild.getId(), iconId, "png");
+    }
+
+    private static String gradientFor(Guild guild) {
+        return GRADIENTS[Math.floorMod(guild.getIdLong(), GRADIENTS.length)];
+    }
+
+    private void addButtons(Guild guild, User user) {
         boolean leaderboard = ServerModule.LEVELS.isEnabled(guild);
         boolean configure = false;
+        boolean tickets = ServerModule.TICKETS.isEnabled(guild);
         if (user != null) {
             configure = PermissionManager.hasPermission(user, UserPermissions.CONFIGURE_ALL_SERVERS);
 
             if (guild.isMember(user)) {
-                configure = configure || PermissionManager.hasPermission(guild.getMember(user), MemberRolePermissions.CONFIGURE_SERVER);
+                Member member = guild.getMember(user);
+                configure = configure || PermissionManager.hasPermission(member, MemberRolePermissions.CONFIGURE_SERVER);
+                tickets = tickets && PermissionManager.hasPermission(member, MemberRolePermissions.VIEW_TICKETS);
             }
         }
 
-        if (leaderboard || configure) {
-            Element buttonContainer = Element.div("flex gap-2 px-4 pb-4");
+        if (!leaderboard && !configure && !tickets) return;
 
-            if (leaderboard) {
-                buttonContainer.addInnerElement(makeButton(guild, "leaderboard", "Leaderboard"));
-            }
+        Element buttonContainer = Element.div("flex flex-wrap gap-2 px-4 pb-4");
 
-            if (configure) {
-                buttonContainer.addInnerElement(makeButton(guild, "configure", "Configure"));
-            }
-
-            this.addInnerElement(buttonContainer);
+        if (leaderboard) {
+            buttonContainer.addInnerElement(makeButton(guild, "leaderboard", "Leaderboard"));
         }
+
+        if (configure) {
+            buttonContainer.addInnerElement(makeButton(guild, "configure", "Configure"));
+        }
+
+        if (tickets) {
+            buttonContainer.addInnerElement(makeButton(guild, "tickets", "Tickets"));
+        }
+
+        this.addInnerElement(buttonContainer);
     }
 
     private Element makeButton(Guild guild, String type, String text) {
-        return Element.of("a", "flex-1 rounded-md border px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white")
-                .addField("href", "/" + guild.getId() + "/" + type)
-                .addInnerElement(text);
+        return new LinkButton(text, "/" + guild.getId() + "/" + type);
     }
 }

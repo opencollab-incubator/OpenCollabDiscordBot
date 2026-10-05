@@ -47,7 +47,7 @@ public class GithubCommand extends FilteredSlashCommand {
         this.arguments = "<repo>";
         this.help = "Get info about a given GitHub repo.";
         this.guildOnly = false;
-          this.options = Arrays.asList(
+        this.options = Arrays.asList(
                 new OptionData(OptionType.STRING, "repo", "The repository to lookup", true),
                 new OptionData(OptionType.STRING, "owner", "Owner of the repository")
         );

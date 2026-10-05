@@ -35,8 +35,6 @@ import org.geysermc.discordbot.http.pages.HomeMessage;
 import org.geysermc.discordbot.http.pages.guild.Leaderboard;
 import org.geysermc.discordbot.storage.ServerModule;
 import org.geysermc.discordbot.util.BotServers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -61,19 +59,19 @@ public class LeaderboardController {
         }
 
         if (!ServerModule.LEVELS.isEnabled(guild)) {
-            return PageUtils.getSuccessfulResponse(request, principal, new HomeMessage(
+            return PageUtils.getResponse(request, principal, new HomeMessage(
                     user, "Levels are disabled for this server.",
                     "Go back home", "/"
             ));
         }
 
         if (GeyserBot.storageManager.getLevels(guild).isEmpty()) {
-            return PageUtils.getSuccessfulResponse(request, principal, new HomeMessage(
+            return PageUtils.getResponse(request, principal, new HomeMessage(
                     user, "No one has any levels here.",
                     "Go back home", "/"
             ));
         }
 
-        return PageUtils.getSuccessfulResponse(request, principal, new Leaderboard(user, guild));
+        return PageUtils.getResponse(request, principal, new Leaderboard(user, guild));
     }
 }

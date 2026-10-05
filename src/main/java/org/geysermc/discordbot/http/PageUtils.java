@@ -28,26 +28,40 @@ package org.geysermc.discordbot.http;
 import jakarta.servlet.http.HttpServletRequest;
 import org.geysermc.discordbot.http.html.HtmlPage;
 import org.geysermc.discordbot.http.html.HtmlRenderable;
+import org.json.JSONObject;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 public class PageUtils {
-    // MediaType.TEXT_HTML has no charset, so Spring falls back to StringHttpMessageConverter's
-    // default of ISO-8859-1 when encoding the response body - mangling non-ASCII Discord display
-    // names embedded in the rendered HTML. Declare UTF-8 explicitly to avoid that.
     private static final MediaType TEXT_HTML_UTF8 = new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8);
 
-    public static ResponseEntity<String> getSuccessfulResponse(HttpServletRequest request, OAuth2User principal, HtmlRenderable renderable) {
-        if (renderable instanceof HtmlPage page) page.create();
-        return ResponseEntity.ok().contentType(TEXT_HTML_UTF8).body(renderable.render(request, principal));
+    public static ResponseEntity<String> getResponse(HttpServletRequest request, OAuth2User principal, HtmlRenderable renderable) {
+        return getResponse(request, principal, renderable, HttpStatus.OK);
     }
 
     public static ResponseEntity<String> getResponse(HttpServletRequest request, OAuth2User principal, HtmlRenderable renderable, HttpStatusCode code) {
         if (renderable instanceof HtmlPage page) page.create();
         return ResponseEntity.status(code).contentType(TEXT_HTML_UTF8).body(renderable.render(request, principal));
+    }
+
+    public static ResponseEntity<String> getJsonResponse(HttpStatus status, JSONObject json) {
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json.toString());
+    }
+
+    public static ResponseEntity<String> getJsonResponse(HttpStatus status, String message) {
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new JSONObject(Map.of(
+                        "code", status.value(),
+                        "message", message
+                )).toString());
     }
 }

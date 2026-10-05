@@ -26,19 +26,24 @@
 package org.geysermc.discordbot.permissions;
 
 import java.awt.*;
+import java.util.EnumSet;
 
 public enum UserRank {
-    NONE("None", null, null),
+    DONATOR("Donator", "bolt-lightning", Color.decode("#f785ea")),
+    NOTABLE("Notable", "certificate", Color.decode("#f0441d")),
+    MODERATOR("Moderator", "hammer", Color.decode("#36ca99")),
     OPEN_COLLAB_STAFF("Open Collaboration Staff", "box-open", Color.decode("#f8d040"));
 
     private final String name;
     private final String icon;
     private final Color color;
+    private final EnumSet<UserPermissions> permissions;
 
-    UserRank(String name, String icon, Color color) {
+    UserRank(String name, String icon, Color color, UserPermissions... permissions) {
         this.name = name;
         this.icon = icon;
         this.color = color;
+        this.permissions = permissions.length == 0 ? EnumSet.noneOf(UserPermissions.class) : EnumSet.of(permissions[0], permissions);
     }
 
     public String getIcon() {
@@ -47,6 +52,10 @@ public enum UserRank {
 
     public Color getColor() {
         return this.color;
+    }
+
+    public EnumSet<UserPermissions> getPermissions() {
+        return this.permissions;
     }
 
     @Override

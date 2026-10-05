@@ -151,11 +151,13 @@ public class ErrorAnalyzer extends Handler {
                 EXECUTOR.submit(runnable);
 
             } else {
-                List<String> extensions;
+                List<String> extensions = null;
                 // Get the guild extensions and if not in a guild just use some defaults
                 if (event.isFromGuild()) {
                     extensions = ServerConfiguration.CONVERT_EXTENSIONS.get(event.getGuild());
-                } else {
+                }
+
+                if (extensions == null) {
                     extensions = new ArrayList<>();
                     extensions.add("txt");
                     extensions.add("log");

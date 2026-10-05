@@ -25,6 +25,7 @@
 
 package org.geysermc.discordbot.http;
 
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.util.PropertiesManager;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -48,6 +49,8 @@ public class WebPanelApplication {
      */
     public static ConfigurableApplicationContext start() {
         InetSocketAddress address = PropertiesManager.getWebAddress();
+
+        GeyserBot.LOGGER.info("Starting panel on {}.", address);
 
         Properties defaultProperties = new Properties();
         defaultProperties.setProperty("server.address", address.getHostString());

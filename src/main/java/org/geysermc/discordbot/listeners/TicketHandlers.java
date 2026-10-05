@@ -17,14 +17,16 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.MessageUpdateEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.restaction.ChannelAction;
 import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.storage.ServerConfiguration;
 import org.geysermc.discordbot.storage.ServerModule;
+import org.geysermc.discordbot.storage.TicketChatMessage;
 import org.geysermc.discordbot.util.*;
 import org.geysermc.discordbot.util.ticket.TicketData;
+import org.geysermc.discordbot.util.ticket.TicketMetadata;
 import org.geysermc.discordbot.util.ticket.TicketType;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,26 +49,31 @@ public class TicketHandlers {
             TicketType type = TicketType.getTicketType(event.getInteraction().getCustomId());
             if (type == null) return;
 
-            TicketData data = getTicketData(event, type);
-            if (data == null) return;
-            if (data.clientRole() == null) {
-                List<Role> clientRoles = getClientRoles(event.getMember());
+            List<Role> clientRoles = getClientRoles(event.getMember());
 
-                event.replyModal(Modal.create(type.buttonId() + "-client-select", "Select client")
-                                .addComponents(Label.of(
-                                        "Client",
-                                        StringSelectMenu.create("client-role")
-                                                .setMaxValues(1).setMinValues(1)
-                                                .addOptions(clientRoles.stream()
-                                                        .map(role -> SelectOption.of(role.getName(), role.getId()))
-                                                        .toList())
-                                                .setRequired(true)
-                                                .build()
-                                ))
-                        .build()).queue();
-            } else {
-                commonHandle(event, data, event::replyEmbeds);
+            if (clientRoles.isEmpty()) {
+                event.reply("You are not an Open Collaboration client.").setEphemeral(true).queue();
+                return;
             }
+
+            if (clientRoles.size() == 1) {
+                commonHandle(event, new TicketData(clientRoles.getFirst(), type), event::replyEmbeds);
+                return;
+            }
+
+            // Multiple client roles - don't allocate a ticket ID until the member picks one.
+            event.replyModal(Modal.create(type.buttonId() + "-client-select", "Select client")
+                            .addComponents(Label.of(
+                                    "Client",
+                                    StringSelectMenu.create("client-role")
+                                            .setMaxValues(1).setMinValues(1)
+                                            .addOptions(clientRoles.stream()
+                                                    .map(role -> SelectOption.of(role.getName(), role.getId()))
+                                                    .toList())
+                                            .setRequired(true)
+                                            .build()
+                            ))
+                    .build()).queue();
         }
 
         @Override
@@ -115,10 +122,10 @@ public class TicketHandlers {
 
             action.queue(channel -> {
                 try {
-                    TicketHelper.initTicket(channel, ticketData);
+                    TicketMetadata metadata = TicketHelper.initTicket(channel, ticketData);
 
                     TicketHelper.logTicketAction(
-                            channel,
+                            metadata,
                             "Created ticket.\n" +
                                     "- User: @" + event.getUser().getName() + " (ID: " + event.getUser().getId() + ")\n" +
                                     "- Client: @" + ticketData.clientRole().getName() + " (ID: " + ticketData.clientRole().getId() + ")\n" +
@@ -205,20 +212,6 @@ public class TicketHandlers {
             return null;
         }
 
-        public TicketData getTicketData(@NotNull ButtonInteractionEvent event, TicketType type) {
-            List<Role> clientRoles = getClientRoles(event.getMember());
-
-            if (clientRoles.isEmpty()) {
-                event.reply("You are not an Open Collaboration client.").setEphemeral(true).queue();
-                return null;
-            } else if (clientRoles.size() == 1) {
-                Role role = clientRoles.getFirst();
-                return new TicketData(role, role.getName().toLowerCase().replace(' ', '-'), type);
-            } else {
-                return new TicketData(null, null, type);
-            }
-        }
-
         @Override
         public ServerModule requiredModule() {
             return ServerModule.TICKETS;
@@ -241,9 +234,9 @@ public class TicketHandlers {
         }
 
         private void commonMessageHandle(Message message, Member member, MessageChannel c, String action) {
-            if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(member.getGuild())) return;
             if (!(c instanceof TextChannel channel)) return;
-            if (!TicketHelper.isLoggedTicket(channel)) return;
+            TicketMetadata metadata = TicketHelper.getTicketMetadata(channel);
+            if (metadata == null) return;
 
             User user = member.getUser();
 
@@ -263,36 +256,51 @@ public class TicketHandlers {
                         .append("\"");
             }
 
+            List<String> savedAttachments = new ArrayList<>();
+
             if (!message.getAttachments().isEmpty()) {
                 logLine.append(" with attachments [");
-                List<String> fileNames = new ArrayList<>();
                 for (Message.Attachment attachment : message.getAttachments()) {
                     String fileName = attachment.getId() + "_" + attachment.getFileName();
-                    fileNames.add(fileName);
+                    savedAttachments.add(fileName);
                     try {
                         NetworkUtils.downloadTo(
                                 URI.create(attachment.getUrl()).toURL(),
-                                TicketHelper.getTicketDirectory(channel).resolve(fileName)
+                                TicketHelper.getTicketDirectory(metadata.ticketId()).resolve(fileName)
                         );
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
-                logLine.append(String.join(", ", fileNames))
+                logLine.append(String.join(", ", savedAttachments))
                         .append("]");
             }
 
-            TicketHelper.logTicketAction(channel, logLine.toString());
+            TicketHelper.logTicketAction(metadata, logLine.toString());
+
+            GeyserBot.storageManager.saveTicketMessage(new TicketChatMessage(
+                    metadata.ticketId(),
+                    message.getIdLong(),
+                    user.getIdLong(),
+                    member.getEffectiveName(),
+                    user.getEffectiveAvatarUrl(),
+                    message.getContentRaw(),
+                    savedAttachments,
+                    message.getTimeCreated().toInstant(),
+                    action.equals("edited"),
+                    false
+            ));
         }
 
         @Override
         public void onMessageDelete(@NotNull MessageDeleteEvent event) {
             if (!shouldExecute(event.getGuild())) return;
-            if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(event.getGuild())) return;
             if (!(event.getChannel() instanceof TextChannel channel)) return;
-            if (!TicketHelper.isLoggedTicket(channel)) return;
+            TicketMetadata metadata = TicketHelper.getTicketMetadata(channel);
+            if (metadata == null) return;
 
-            TicketHelper.logTicketAction(channel, "Message (ID: %s) was deleted.".formatted(event.getMessageId()));
+            TicketHelper.logTicketAction(metadata, "Message (ID: %s) was deleted.".formatted(event.getMessageId()));
+            GeyserBot.storageManager.markTicketMessageDeleted(metadata.ticketId(), event.getMessageIdLong());
         }
 
         @Override

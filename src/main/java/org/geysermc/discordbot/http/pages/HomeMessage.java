@@ -27,6 +27,8 @@ package org.geysermc.discordbot.http.pages;
 
 import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.http.html.Element;
+import org.geysermc.discordbot.http.html.FAIcon;
+import org.geysermc.discordbot.http.pages.elements.LinkButton;
 
 public class HomeMessage extends Message {
     private final String href;
@@ -38,11 +40,12 @@ public class HomeMessage extends Message {
 
     @Override
     public void addContent(Element container) {
-        container.addInnerElement(Element.of("h2", "text-3xl font-bold mb-4")
-                .addInnerElement(title));
+        container.addClass("flex flex-col items-center text-center gap-2 mt-16");
 
-        container.addInnerElement(Element.of("a", "text-gray-700 dark:text-gray-300")
-                .addInnerElement(message)
-                .addField("href", href));
+        container.addInnerElement(new FAIcon("circle-info")
+                .addClass("text-5xl text-gray-400 dark:text-gray-600 mb-2"));
+
+        container.addInnerElement(Element.h2().removeClass("mb-4").addInnerElement(title));
+        container.addInnerElement(new LinkButton(message, href).removeClass("flex-1").addClass("mt-2"));
     }
 }

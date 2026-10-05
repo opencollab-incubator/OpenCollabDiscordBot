@@ -25,19 +25,36 @@
 
 package org.geysermc.discordbot.http.pages.elements;
 
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.User;
-import org.geysermc.discordbot.GeyserBot;
+import net.dv8tion.jda.api.entities.*;
 import org.geysermc.discordbot.http.html.Element;
 import org.geysermc.discordbot.http.html.FAIcon;
-import org.geysermc.discordbot.http.html.TooltipElement;
 import org.geysermc.discordbot.permissions.MemberRank;
+import org.geysermc.discordbot.permissions.PermissionManager;
 import org.geysermc.discordbot.permissions.UserRank;
 
 public class Name extends Element {
     public Name(User user, Guild guild) {
-        super("span");
+        this(user, guild, true);
+    }
+
+    public Name(User user, Guild guild, boolean includeIcons) {
+        this(
+                user, guild, includeIcons,
+                PermissionManager.getTopRank(user),
+                guild == null || !guild.isMember(user) ? null : PermissionManager.getTopRank(guild.getMember(user))
+        );
+    }
+
+    public Name(User user, Guild guild, boolean includeIcons, UserRank userRank, MemberRank memberRank) {
+        super("a");
+
+        if (guild != null) {
+            this.addField("href", "/user/%s/%s".formatted(user.getId(), guild.getId()));
+        } else {
+            this.addField("href", "/user/%s".formatted(user.getId()));
+        }
+
+        Element span = Element.of("span");
 
         this.addField("title", user.getName());
 
@@ -47,54 +64,39 @@ public class Name extends Element {
             Member member = guild.getMember(user);
             nameSpan.setColor(member.getColors().getPrimary(), true);
 
-            if (member.getNickname() == null && member.getUser().getGlobalName() == null) {
-                nameSpan.addSafeInnerElement(user.getName());
-            } else if (member.getNickname() == null) {
-                nameSpan.addSafeInnerElement(user.getGlobalName());
-            } else {
-                nameSpan.addSafeInnerElement(member.getEffectiveName());
+            nameSpan.addSafeInnerElement(member.getEffectiveName());
+        } else {
+            nameSpan.addSafeInnerElement(user.getEffectiveName());
+        }
+
+        span.addInnerElement(nameSpan);
+
+        if (includeIcons) {
+            Element rankSpan = Element.of("span");
+
+            if (!(userRank == null && memberRank == null)) {
+                boolean userShown = userRank != null;
+                boolean memberShown = memberRank != null;
+                if (userShown && memberShown) {
+                    rankSpan.addInnerElement(new FAIcon(memberRank.getIcon())
+                            .addField("title", memberRank.toString())
+                            .setColor(memberRank.getColor()));
+                    rankSpan.addInnerElement("<span> • </span>");
+                    rankSpan.addInnerElement(new FAIcon(userRank.getIcon())
+                            .addField("title", userRank.toString())
+                            .setColor(userRank.getColor()));
+                } else if (userShown) {
+                    rankSpan.addInnerElement(new FAIcon(userRank.getIcon())
+                            .addField("title", userRank.toString())
+                            .setColor(userRank.getColor()));
+                } else {
+                    rankSpan.addInnerElement(new FAIcon(memberRank.getIcon())
+                            .addField("title", memberRank.toString())
+                            .setColor(memberRank.getColor()));
+                }
             }
-        } else if (user.getGlobalName() == null) {
-            nameSpan.addSafeInnerElement(user.getName());
-        } else {
-            nameSpan.addSafeInnerElement(user.getGlobalName());
-        }
 
-        this.addInnerElement(nameSpan);
-
-        //setVisualRank(user, guild);
-    }
-
-    public void setVisualRank(User user, Guild guild) {
-        MemberRank memberRank = MemberRank.MEMBER;
-        if (guild.isMember(user)) {
-            memberRank = GeyserBot.storageManager.getMemberRank(guild.getMember(user));
-        }
-
-        UserRank userRank = GeyserBot.storageManager.getUserRank(user);
-
-        Element span = Element.of("span");
-
-        if (userRank.equals(UserRank.NONE)) {
-            if (memberRank.equals(MemberRank.MEMBER)) return;
-            span.addInnerElement("<span> </span>");
-            span.addInnerElement(new TooltipElement(
-                    new FAIcon(memberRank.getIcon()).setColor(memberRank.getColor()),
-                    memberRank.toString()
-            ));
-            span.addInnerElement(new FAIcon(memberRank.getIcon())
-                    .setColor(memberRank.getColor()));
-        } else {
-            span.addInnerElement("<span> </span>");
-            span.addInnerElement(new TooltipElement(
-                            new FAIcon(memberRank.getIcon()).setColor(memberRank.getColor()),
-                            memberRank.toString()
-                    ));
-            span.addInnerElement("<span> • </span>");
-            span.addInnerElement(new TooltipElement(
-                    new FAIcon(userRank.getIcon()).setColor(userRank.getColor()),
-                    userRank.toString()
-            ));
+            span.addInnerElement(rankSpan);
         }
 
         this.addInnerElement(span);

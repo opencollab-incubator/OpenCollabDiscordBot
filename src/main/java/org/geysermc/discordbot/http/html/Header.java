@@ -26,17 +26,25 @@
 package org.geysermc.discordbot.http.html;
 
 import jakarta.servlet.http.HttpServletRequest;
+import net.dv8tion.jda.api.entities.User;
+import org.geysermc.discordbot.GeyserBot;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.util.HtmlUtils;
 
 public final class Header {
-    public static final AuthenticatedElement ELEMENT = new AuthenticatedElement(new Authenticated(), new Unauthenticated());
+    public static final AuthenticatedElement ELEMENT = new AuthenticatedElement(
+            new Authenticated(),
+            Element.a("/oauth2/authorization/discord")
+                .addClass("px-3 py-1.5 rounded-md hover:bg-white/10 transition")
+                .addInnerElement("Login")
+    );
 
     private static class Authenticated extends Element {
         protected Authenticated() {
             super("a");
 
-            this.addField("href", "/api/me");
-            this.addClass("container mx-auto flex gap-2 items-center hover:text-blue-200");
+            this.addField("href", "/user/self");
+            this.addClass("flex items-center gap-2 rounded-md pl-2 pr-3 py-1.5 transition hover:bg-white/10");
             this.addInnerElement(new ProfilePicture());
             this.addInnerElement(new DisplayName());
         }
@@ -45,31 +53,40 @@ public final class Header {
             @Override
             public String render(HttpServletRequest request, OAuth2User principal) {
                 String userId = principal.getAttribute("id");
-                String avatarHash = principal.getAttribute("avatar");
-                String avatarLink = avatarHash == null
-                        ? "https://cdn.discordapp.com/embed/avatars/1.png"
-                        : "https://cdn.discordapp.com/avatars/%s/%s.png".formatted(userId, avatarHash);
+                User user = GeyserBot.getJDA().getUserById(userId);
+                String avatarLink;
+                if (user == null) {
+                    avatarLink = "https://cdn.discordapp.com/embed/avatars/1.png";
+                } else {
+                    avatarLink = user.getEffectiveAvatarUrl();
+                }
 
-                return "<img alt=\"Profile Picture\" class=\"w-8 h-8 rounded-xl\" src=\"" + avatarLink + "\" />";
+                return Element.img(HtmlUtils.htmlEscape(avatarLink), "Profile Picture")
+                        .addClass("w-6 h-6 rounded-full object-cover").toString();
             }
         }
 
         private static class DisplayName implements HtmlRenderable {
             @Override
             public String render(HttpServletRequest request, OAuth2User principal) {
-                String username = principal.getAttribute("username");
-                String globalName = principal.getAttribute("global_name");
-                String displayName = globalName == null ? username : globalName;
+                String userId = principal.getAttribute("id");
+                User user = GeyserBot.getJDA().getUserById(userId);
+                String username;
+                String displayName;
+                if (user == null) {
+                    username = principal.getAttribute("username");
+                    String globalName = principal.getAttribute("global_name");
+                    displayName = globalName == null ? username : globalName;
+                } else {
+                    username = user.getName();
+                    displayName = user.getEffectiveName();
+                }
 
-                return "<p title=\"" + username + "\">" + displayName + "</p>";
+                return Element.p()
+                        .addField("title", HtmlUtils.htmlEscape(username))
+                        .addClass("text-sm font-medium")
+                        .addSafeInnerElement(HtmlUtils.htmlEscape(displayName)).toString();
             }
-        }
-    }
-
-    private static class Unauthenticated implements HtmlRenderable {
-        @Override
-        public String render(HttpServletRequest request, OAuth2User principal) {
-            return "<a href=\"/oauth2/authorization/discord\" class=\"hover:text-blue-200\">Login</a>";
         }
     }
 }

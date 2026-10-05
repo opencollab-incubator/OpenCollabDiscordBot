@@ -30,7 +30,6 @@ import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.http.PageUtils;
 import org.geysermc.discordbot.http.pages.Index;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -45,13 +44,14 @@ public class IndexController {
     @GetMapping("/")
     public ResponseEntity<String> index(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal,
                                         @RequestParam(name = "login_error", required = false) String loginError,
-                                        @RequestParam(name = "logout", required = false) String logout) throws IOException {
+                                        @RequestParam(name = "logout", required = false) String logout,
+                                        @RequestParam(name = "info", required = false) String info) throws IOException {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
             user = GeyserBot.getJDA().retrieveUserById(userId).complete();
         }
 
-        return PageUtils.getSuccessfulResponse(request, principal, new Index(user, loginError, logout));
+        return PageUtils.getResponse(request, principal, new Index(user, loginError, logout, info));
     }
 }

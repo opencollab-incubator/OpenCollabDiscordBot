@@ -26,10 +26,17 @@
 package org.geysermc.discordbot.http.pages;
 
 import net.dv8tion.jda.api.entities.User;
-import org.geysermc.discordbot.http.html.Base;
-import org.geysermc.discordbot.http.html.Element;
+import org.springframework.http.HttpStatus;
 
 public class Error extends Message {
+    public Error(User user, HttpStatus code) {
+        this(user, code.value(), code.getReasonPhrase());
+    }
+
+    public Error(User user, HttpStatus code, String message) {
+        this(user, code.value(), message);
+    }
+
     public Error(User user, int code, String message) {
         super(user, "Error %d!".formatted(code), message == null ? "That's all we know." : message);
     }

@@ -3,6 +3,7 @@ plugins {
     id 'application'
     id 'org.springframework.boot' version '4.1.0'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
     alias libs.plugins.sentry
 }
 
@@ -32,6 +33,12 @@ repositories {
     maven {
         url 'https://repo.rtm516.co.uk/main/'
     }
+}
+
+javafx {
+    version = "11.0.2"
+    modules = ['javafx.graphics', 'javafx.swing']
+    configuration = 'implementation'
 }
 
 dependencies {
@@ -78,6 +85,12 @@ dependencies {
 
     // Agolia Search (For Wiki)
     implementation libs.algolia
+
+    // Image hasher
+    implementation libs.jimagehash
+
+    // Image readers/writers
+    implementation libs.imageio.webp
 }
 
 jar {
@@ -112,8 +125,8 @@ test {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 sentry {

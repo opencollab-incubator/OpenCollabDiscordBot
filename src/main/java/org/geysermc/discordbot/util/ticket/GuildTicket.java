@@ -23,20 +23,24 @@
  * @link https://github.com/OpenCollaboration/OpenCollabDiscordBot
  */
 
-package org.geysermc.discordbot.http.html;
+package org.geysermc.discordbot.util.ticket;
 
-public class TooltipElement extends Element {
-    public TooltipElement(Element element, String tooltipText) {
-        super("div");
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.geysermc.discordbot.GeyserBot;
 
-        this.addInnerElement(element);
+/**
+ * A ticket as read from the database. Unlike the old file-backed tickets, a {@link GuildTicket}
+ * does not require a live Discord channel to exist - {@link #channel()} returns {@code null}
+ * once the ticket has been closed and its channel removed.
+ */
+public record GuildTicket(TicketMetadata metadata) {
+    public TextChannel channel() {
+        if (metadata.channelId() == null) return null;
 
+        Guild guild = GeyserBot.getJDA().getGuildById(metadata.guildId());
+        if (guild == null) return null;
 
-
-        Element tooltipElement = Element.div("absolute z-50 whitespace-normal break-words rounded-lg bg-black py-1.5 px-3 font-sans text-sm font-normal text-white focus:outline-none");
-
-        tooltipElement.addSafeInnerElement(tooltipText);
-
-        this.addInnerElement(tooltipElement);
+        return guild.getTextChannelById(metadata.channelId());
     }
 }

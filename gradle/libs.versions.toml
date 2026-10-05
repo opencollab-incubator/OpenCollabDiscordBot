@@ -22,6 +22,8 @@ rome = "2.1.0"
 tess4j = "5.14.0" # 5.15.0 seems to be broken and never finish OCR
 imgscalr = "4.2"
 algolia = "4.15.4"
+jimagehash = "1.0.0"
+imageio-webp = "0.1.6"
 
 sentry-gradle = "5.4.0"
 
@@ -67,6 +69,10 @@ tess4j = { group = "net.sourceforge.tess4j", name = "tess4j", version.ref = "tes
 imgscalr = { group = "org.imgscalr", name = "imgscalr-lib", version.ref = "imgscalr" }
 
 algolia = { group = "com.algolia", name = "algoliasearch", version.ref = "algolia" }
+
+jimagehash = { group = "dev.brachtendorf", name = "JImageHash", version.ref = "jimagehash" }
+
+imageio-webp = { group = "org.sejda.imageio", name = "webp-imageio", version.ref = "imageio-webp" }
 
 spring-restclient = { group = "org.springframework.boot", name = "spring-boot-starter-restclient" }
 spring-security = { group = "org.springframework.boot", name = "spring-boot-starter-security" }

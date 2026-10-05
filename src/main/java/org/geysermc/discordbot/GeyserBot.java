@@ -47,8 +47,7 @@ import org.geysermc.discordbot.storage.AbstractStorageManager;
 import org.geysermc.discordbot.storage.BanData;
 import org.geysermc.discordbot.storage.SlowModeInfo;
 import org.geysermc.discordbot.storage.StorageType;
-import org.geysermc.discordbot.tags.TagsListener;
-import org.geysermc.discordbot.tags.TagsManager;
+import org.geysermc.discordbot.tag.TagManager;
 import org.geysermc.discordbot.util.*;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
@@ -61,6 +60,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -75,7 +76,11 @@ public class GeyserBot {
     public static final List<SlashCommand> GLOBAL_SLASH_COMMANDS;
     public static final List<ContextMenu> CONTEXT_MENUS;
 
+    public static boolean AUDIT = false;
+
     public static AbstractStorageManager storageManager;
+
+    public static TagManager tagManager;
 
     private static ScheduledExecutorService generalThreadPool;
 
@@ -106,8 +111,8 @@ public class GeyserBot {
 
             Set<Class<? extends SlashCommand>> slashSubTypes = reflections.getSubTypesOf(SlashCommand.class);
             for (Class<? extends SlashCommand> theClass : slashSubTypes) {
-                // Don't load SubCommands
-                if (theClass.getName().contains("SubCommand")) {
+                // Don't load SubCommands (always static)
+                if (Modifier.isStatic(theClass.getModifiers())) {
                     continue;
                 }
                 // Don't load abstract classes
@@ -160,6 +165,12 @@ public class GeyserBot {
     }
 
     public static void main(String[] args) throws IOException {
+        List<String> arguments = List.of(args);
+
+        if (arguments.contains("audit")) {
+            AUDIT = true;
+        }
+
         // Load properties into the PropertiesManager
         Properties prop = new Properties();
         prop.load(new FileInputStream("bot.properties"));
@@ -203,7 +214,7 @@ public class GeyserBot {
             System.exit(1);
         }
 
-        CommandClient[] clients = new CommandClient[GUILD_SLASH_COMMANDS.size() + 2];
+        CommandClient[] clients = new CommandClient[GUILD_SLASH_COMMANDS.size() + 1];
 
         // Setup the global command client
         CommandClientBuilder client = new CommandClientBuilder();
@@ -218,22 +229,8 @@ public class GeyserBot {
         client.setCommandPreProcessBiFunction((event, command) -> !SwearHandler.filteredMessages.contains(event.getMessage().getIdLong()));
         clients[0] = client.build();
 
-        // Then setup the tag client, this can be global and just filtered per-server
-        CommandClientBuilder tagClient = new CommandClientBuilder();
-        tagClient.setActivity(null);
-        tagClient.setOwnerId("0"); // No owner
-        String tagPrefix = PropertiesManager.getPrefix() + PropertiesManager.getPrefix();
-        tagClient.setPrefix(tagPrefix);
-        tagClient.setPrefixes(new String[] {"!tag "});
-        tagClient.useHelpBuilder(false);
-        tagClient.addCommands(TagsManager.getTags().toArray(new Command[0]));
-        tagClient.setListener(new TagsListener());
-        tagClient.setCommandPreProcessBiFunction((event, command) -> !SwearHandler.filteredMessages.contains(event.getMessage().getIdLong()));
-        tagClient.setManualUpsert(true);
-        clients[1] = tagClient.build();
-
         // Now setup server-specific commands
-        int index = 2;
+        int index = 1;
         for (Map.Entry<String, List<SlashCommand>> entry : GUILD_SLASH_COMMANDS.entrySet()) {
             CommandClientBuilder guildClient = new CommandClientBuilder();
             guildClient.forceGuildOnly(entry.getKey());
@@ -290,9 +287,12 @@ public class GeyserBot {
                             new ExploitMessageHandler(),
                             new GeyserDumpHandler(),
                             new LevelHandler(),
-                            new PreviewHandler()
+                            new PreviewHandler(),
+                            new BoosterListener(),
+                            new BadImageListener()
                     )
                     .addEventListeners((Object[]) clients)
+                    .addEventListeners(tagManager = new TagManager())
                     .build();
         } catch (IllegalArgumentException exception) {
             LOGGER.error("Failed to initialize JDA!", exception);
@@ -309,6 +309,17 @@ public class GeyserBot {
             } catch (Exception e) {
                 LOGGER.error("Failed to start the web panel!", e);
             }
+            LOGGER.info("Started panel!");
+
+            LOGGER.info("Testing connection.");
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress("127.0.0.1", PropertiesManager.getWebAddress().getPort()), 1000);
+                LOGGER.info("Connected successfully.");
+            } catch (IOException e) {
+                LOGGER.info("Unable to ping panel.", e);
+            }
+        } else {
+            LOGGER.warn("Not starting web panel!");
         }
 
         // Setup the health check scheduler

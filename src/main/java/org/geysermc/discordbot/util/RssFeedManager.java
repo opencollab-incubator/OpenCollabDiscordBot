@@ -35,6 +35,8 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.storage.ServerConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -47,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 public class RssFeedManager {
 
     private static final Map<String, List<String>> RSS_POSTS = new HashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(RssFeedManager.class);
 
     public static void setup() {
         GeyserBot.getGeneralThreadPool().schedule(RssFeedManager::initialCache, 5, TimeUnit.SECONDS);
@@ -55,8 +58,7 @@ public class RssFeedManager {
 
     private static void initialCache() {
         for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-            Map<String, TextChannel> urls = ServerConfiguration.RSS_FEEDS.get(guild);
-            if (urls == null) continue;
+            Map<String, TextChannel> urls = getMap(guild);
             for (Map.Entry<String, TextChannel> feed : urls.entrySet()) {
                 cacheFeed(feed.getKey(), feed.getValue());
             }
@@ -90,8 +92,7 @@ public class RssFeedManager {
      */
     private static void checkFeeds() {
         for (Guild guild : GeyserBot.getJDA().getGuilds()) {
-            Map<String, TextChannel> urls = ServerConfiguration.RSS_FEEDS.get(guild);
-            if (urls == null) continue;
+            Map<String, TextChannel> urls = getMap(guild);
             for (Map.Entry<String, TextChannel> feed : urls.entrySet()) {
                 try {
                     // If we don't have the feed cached then cache it and continue
@@ -129,5 +130,36 @@ public class RssFeedManager {
                 }
             }
         }
+    }
+
+    private static Map<String, TextChannel> getMap(Guild guild) {
+        Map<String, TextChannel> map = new HashMap<>();
+        List<String> urls = ServerConfiguration.RSS_FEED_LINKS.get(guild);
+        List<TextChannel> channels = ServerConfiguration.RSS_FEED_CHANNELS.get(guild);
+
+        if (urls == null && channels == null) return map;
+
+        if (urls == null) {
+            log.error("Channels were specified for {},'s RSS feeds, but not URLs, this should be addressed,", guild.getName());
+            return map;
+        }
+
+        if (channels == null) {
+            log.error("URLs were specified for {},'s RSS feeds, but not channels, this should be addressed,", guild.getName());
+            return map;
+        }
+
+        if (urls.size() != channels.size()) {
+            log.error("URL and Channel list sizes do not match for {}'s RSS feeds, this should be addressed!", guild.getName());
+            return map;
+        }
+
+        int i = 0;
+        for (String url : urls) {
+            map.put(url, channels.get(i));
+            i++;
+        }
+
+        return map;
     }
 }

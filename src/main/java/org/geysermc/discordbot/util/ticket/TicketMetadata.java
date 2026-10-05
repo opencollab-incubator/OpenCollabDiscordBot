@@ -25,13 +25,56 @@
 
 package org.geysermc.discordbot.util.ticket;
 
-public record TicketMetadata(String id, String clientId, String clientName, String clientRoleId, TicketType type) {
+import java.time.Instant;
+
+/**
+ * Permanent, database-backed record of a ticket.
+ * <p>
+ * A ticket keeps existing in storage for as long as the guild does, even after its channel is
+ * closed and deleted - {@code channelId} is {@code null} for tickets that no longer have one.
+ *
+ * @param ticketId The stable, globally unique database identifier for this ticket. Unlike
+ *                  {@code channelId}, this never changes and remains valid after the ticket is closed.
+ * @param guildId The Discord guild this ticket belongs to
+ * @param channelId The Discord channel currently backing this ticket, or {@code null} if it no longer has one
+ * @param createdAt When the ticket was created
+ * @param id The per-client sequential ticket number, used to build the channel name
+ * @param clientId The client identifier the ticket was filed under
+ * @param clientName The name of the client role at the time the ticket was created
+ * @param clientRoleId The Discord role ID of the client
+ * @param type The ticket's type
+ * @param state Whether the ticket is still open or has been closed
+ */
+public record TicketMetadata(
+        int ticketId,
+        long guildId,
+        Long channelId,
+        Instant createdAt,
+        String id,
+        String clientId,
+        String clientName,
+        String clientRoleId,
+        TicketType type,
+        TicketState state
+) {
     public String getChannelName() {
         String prefix = type.options().channelPrefix() == null ? "" : type.options().channelPrefix() + "-";
         return prefix + clientId + "-" + id;
     }
 
     public TicketMetadata withTicketType(String ticketType) {
-        return new TicketMetadata(id, clientId, clientName, clientRoleId, TicketType.getFromName(ticketType));
+        return new TicketMetadata(ticketId, guildId, channelId, createdAt, id, clientId, clientName, clientRoleId, TicketType.getFromName(ticketType), state);
+    }
+
+    public TicketMetadata withTicketId(int ticketId) {
+        return new TicketMetadata(ticketId, guildId, channelId, createdAt, id, clientId, clientName, clientRoleId, type, state);
+    }
+
+    public TicketMetadata withChannelId(Long channelId) {
+        return new TicketMetadata(ticketId, guildId, channelId, createdAt, id, clientId, clientName, clientRoleId, type, state);
+    }
+
+    public TicketMetadata withState(TicketState state) {
+        return new TicketMetadata(ticketId, guildId, channelId, createdAt, id, clientId, clientName, clientRoleId, type, state);
     }
 }

@@ -25,20 +25,15 @@
 
 package org.geysermc.discordbot.storage;
 
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.UserSnowflake;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.geysermc.discordbot.permissions.MemberRank;
 import org.geysermc.discordbot.permissions.MemberRolePermissions;
 import org.geysermc.discordbot.permissions.UserPermissions;
 import org.geysermc.discordbot.permissions.UserRank;
+import org.geysermc.discordbot.util.ticket.TicketMetadata;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 public abstract class AbstractStorageManager {
 
@@ -210,27 +205,46 @@ public abstract class AbstractStorageManager {
     public abstract int getAndIncrementTicketId(String clientId);
 
     /**
-     * Get all pending appeals, grouped by the {@link User} who submitted them
+     * Submit an appeal
      *
-     * @return A future that resolves to a map of user to their list of {@link Appeal}
+     * @param user {@link UserSnowflake} that created the appeal
+     * @param message The message of the appeal
+     * @return The ID of the inserted appeal
      */
-    public abstract CompletableFuture<Map<User, List<Appeal>>> getCurrentAppeals();
+    public abstract int addAppeal(UserSnowflake user, String message);
 
     /**
-     * Get all appeals submitted by a given user
+     * Get the appeals of a user
      *
-     * @param user The user to get appeals for
-     * @return List of {@link Appeal} submitted by the user
+     * @param user The {@link UserSnowflake}
+     * @param limit The limit of results to get
+     * @return List of {@link Appeal} returned
      */
-    public abstract List<Appeal> getCurrentAppeals(User user);
+    public abstract List<Appeal> getAppeals(UserSnowflake user, int limit);
 
     /**
-     * Store a new appeal for a user
+     * Get all appeals
      *
-     * @param user The user the appeal belongs to
-     * @param appeal The {@link Appeal} to store
+     * @param limit The limit of results to get
+     * @return List of {@link Appeal} returned
      */
-    public abstract void addAppeal(User user, Appeal appeal);
+    public abstract List<Appeal> getAppeals(int limit);
+
+    /**
+     * Get an appeal by ID
+     *
+     * @param id The id of the wanted appeal
+     * @return An {@link Appeal}
+     */
+    public abstract Appeal getAppeal(int id);
+
+    /**
+     * Update the state of an appeal
+     *
+     * @param id The id of the appeal to update
+     * @param state The new state for the appeal
+     */
+    public abstract void updateAppeal(int id, Appeal.State state);
 
     /**
      * Get the stored permissions for a given Guild Member
@@ -257,20 +271,20 @@ public abstract class AbstractStorageManager {
     public abstract UserPermissions[] getUserPermissions(User user);
 
     /**
-     * Get the stored rank for a given {@link User}
+     * Get the stored ranks for a given {@link User}
      *
      * @param user User to get the rank for
-     * @return The user's {@link UserRank}, or {@link UserRank#NONE} if none is set
+     * @return The user's {@link UserRank}s
      */
-    public abstract UserRank getUserRank(User user);
+    public abstract UserRank[] getUserRanks(User user);
 
     /**
-     * Get the stored rank for a given Guild Member
+     * Get the stored ranks for a given Guild Member
      *
      * @param member Member to get the rank for
-     * @return The member's {@link MemberRank}, or {@link MemberRank#MEMBER} if none is set
+     * @return The member's {@link MemberRank}s
      */
-    public abstract MemberRank getMemberRank(Member member);
+    public abstract MemberRank[] getMemberRanks(Member member);
 
     /**
      * Set the stored permissions for a given Guild Member
@@ -297,20 +311,20 @@ public abstract class AbstractStorageManager {
     public abstract void setUserPermissions(User user, UserPermissions[] permissions);
 
     /**
-     * Set the stored rank for a given {@link User}
+     * Set the stored ranks for a given {@link User}
      *
      * @param user User to set the rank for
-     * @param rank The {@link UserRank} to store
+     * @param ranks The {@link UserRank}s to store
      */
-    public abstract void setUserRank(User user, UserRank rank);
+    public abstract void setUserRanks(User user, UserRank[] ranks);
 
     /**
-     * Set the stored rank for a given Guild Member
+     * Set the stored ranks for a given Guild Member
      *
      * @param member Member to set the rank for
-     * @param rank The {@link MemberRank} to store
+     * @param ranks The {@link MemberRank}s to store
      */
-    public abstract void setMemberRank(Member member, MemberRank rank);
+    public abstract void setMemberRanks(Member member, MemberRank[] ranks);
 
     /**
      * Persist a web panel login so it survives a bot restart.
@@ -365,4 +379,106 @@ public abstract class AbstractStorageManager {
      * @return List of all stored {@link BanData}
      */
     public abstract List<BanData> getBans();
+
+    /**
+     * Permanently store a new ticket. The ticket remains in storage forever, even after its
+     * channel is closed and removed.
+     *
+     * @param metadata The initial data for the ticket. Its {@code ticketId} is ignored; the
+     *                  database assigns the real one.
+     * @return The generated, stable ticket ID
+     */
+    public abstract int createTicket(TicketMetadata metadata);
+
+    /**
+     * Update the stored data of an existing ticket, e.g. to change its type, state or channel.
+     *
+     * @param metadata The new data to persist, keyed by {@link TicketMetadata#ticketId()}
+     */
+    public abstract void updateTicket(TicketMetadata metadata);
+
+    /**
+     * Get a ticket by its stable, internal ticket ID.
+     *
+     * @param ticketId The ticket's ID
+     * @return The stored {@link TicketMetadata}, or {@code null} if not found
+     */
+    public abstract TicketMetadata getTicket(int ticketId);
+
+    /**
+     * Get a ticket by the Discord channel that currently backs it.
+     *
+     * @param channelId The Discord snowflake ID of the ticket's channel
+     * @return The stored {@link TicketMetadata}, or {@code null} if not found
+     */
+    public abstract TicketMetadata getTicketByChannel(long channelId);
+
+    /**
+     * Get every ticket ever created for a guild, regardless of whether it still has a channel.
+     *
+     * @param guildId The Discord snowflake ID of the guild
+     * @return List of all stored {@link TicketMetadata} for the guild
+     */
+    public abstract List<TicketMetadata> getTickets(long guildId);
+
+    /**
+     * Append a line to a ticket's permanent transcript.
+     *
+     * @param ticketId The ticket to log against
+     * @param line The line to add
+     */
+    public abstract void addTicketLog(int ticketId, String line);
+
+    /**
+     * Get the full transcript for a ticket.
+     *
+     * @param ticketId The ticket to get the transcript for
+     * @return List of {@link TicketLogEntry} in the order they were logged
+     */
+    public abstract List<TicketLogEntry> getTicketLog(int ticketId);
+
+    /**
+     * Store or update a ticket's chat message, so the web panel can render it the way it looked
+     * in Discord. Upserts on ({@code ticketId}, {@code messageId}), so re-saving an edited
+     * message replaces its previous stored copy.
+     *
+     * @param message The message to persist
+     */
+    public abstract void saveTicketMessage(TicketChatMessage message);
+
+    /**
+     * Mark a previously stored chat message as deleted, without removing it - it stays visible
+     * in the web panel's message view the way a deleted message shows in Discord.
+     *
+     * @param ticketId The ticket the message belongs to
+     * @param messageId The Discord snowflake ID of the deleted message
+     */
+    public abstract void markTicketMessageDeleted(int ticketId, long messageId);
+
+    /**
+     * Get every chat message stored for a ticket, oldest first.
+     *
+     * @param ticketId The ticket to get messages for
+     * @return List of {@link TicketChatMessage} in the order they were sent
+     */
+    public abstract List<TicketChatMessage> getTicketMessages(int ticketId);
+
+    /**
+     * Adds a known bad image to the database
+     * @param image the image data
+     * @return the db id
+     */
+    public abstract int addBadImage(BadImage image);
+
+    /**
+     * Removes a bad image from the database
+     * @param id the db id
+     */
+    public abstract void removeBadImage(int id);
+
+    /**
+     * Gets all bad images in the database
+     * @return bad images
+     */
+    public abstract List<BadImage> getBadImages();
 }

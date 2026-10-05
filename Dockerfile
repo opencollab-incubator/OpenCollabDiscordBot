@@ -1,7 +1,7 @@
 FROM eclipse-temurin:21-alpine
 
 RUN apk update \
-	&& apk add tesseract-ocr tesseract-ocr-data-eng curl \
+	&& apk add tesseract-ocr tesseract-ocr-data-eng curl git \
 	&& adduser -h /opt/app -H -D app
 
 RUN mkdir -p /opt/app && \

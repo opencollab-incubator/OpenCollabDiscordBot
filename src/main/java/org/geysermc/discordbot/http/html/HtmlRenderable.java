@@ -29,5 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 public interface HtmlRenderable {
+    HtmlRenderable EMPTY = (r, p) -> "";
+
     String render(HttpServletRequest request, OAuth2User principal);
 }

@@ -29,10 +29,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public enum MemberRolePermissions {
-    VIEW_APPEALS,
-    MANAGE_APPEALS,
     CONFIGURE_SERVER,
-    MANAGE_TAGS;
+    MANAGE_PERMISSIONS,
+    MANAGE_RANKS,
+    VIEW_TICKETS,
+    MANAGE_TICKETS;
 
     public static int getRawValue(MemberRolePermissions... permissions) {
         int perms = 0;

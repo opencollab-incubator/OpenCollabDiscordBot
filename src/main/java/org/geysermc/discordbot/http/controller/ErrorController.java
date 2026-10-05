@@ -30,22 +30,62 @@ import net.dv8tion.jda.api.entities.User;
 import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.http.PageUtils;
 import org.geysermc.discordbot.http.pages.Error;
+import org.json.JSONObject;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Map;
 
 @RestController
+@RestControllerAdvice
 public class ErrorController {
     @GetMapping("/error")
-    public ResponseEntity<String> index(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<String> error(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal) {
         User user = null;
         if (principal != null) {
             String userId = principal.getAttribute("id");
             user = GeyserBot.getJDA().retrieveUserById(userId).complete();
         }
 
-        return PageUtils.getSuccessfulResponse(request, principal, new Error(user, 500, "Internal server error."));
+        return PageUtils.getResponse(request, principal, new Error(user, 500, "Internal server error."));
+    }
+
+    @ExceptionHandler(produces = "application/json")
+    public ResponseEntity<String> handleJson(Exception e) {
+        StringWriter writer = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(writer);
+        e.printStackTrace(printWriter);
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new JSONObject(Map.of(
+                "exception", writer.toString()
+        )).toString());
+    }
+
+    @ExceptionHandler(produces = "text/html")
+    public ResponseEntity<String> handle(HttpServletRequest request, @AuthenticationPrincipal OAuth2User principal, Exception e) {
+        User user = null;
+        if (principal != null) {
+            String userId = principal.getAttribute("id");
+            user = GeyserBot.getJDA().retrieveUserById(userId).complete();
+        }
+
+        if (e instanceof NoResourceFoundException) {
+            return PageUtils.getResponse(request, principal, new Error(user, HttpStatus.NOT_FOUND));
+        }
+
+        StringWriter writer = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(writer);
+        e.printStackTrace(printWriter);
+
+        return PageUtils.getResponse(request, principal, new Error(null, 500, writer.toString()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

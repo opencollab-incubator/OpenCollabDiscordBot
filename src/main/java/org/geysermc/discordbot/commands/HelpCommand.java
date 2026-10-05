@@ -25,7 +25,6 @@
 
 package org.geysermc.discordbot.commands;
 
-import com.jagrosh.jdautilities.command.Command;
 import com.jagrosh.jdautilities.command.CommandEvent;
 import com.jagrosh.jdautilities.command.SlashCommand;
 import com.jagrosh.jdautilities.command.SlashCommandEvent;
@@ -35,7 +34,7 @@ import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.util.BotColors;
 import org.geysermc.discordbot.util.PropertiesManager;
 
-import java.util.Comparator;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -51,20 +50,30 @@ public class HelpCommand extends BotSlashCommand {
 
     @Override
     protected void executeCommand(SlashCommandEvent event) {
-        event.replyEmbeds(handle("/")).queue();
+        event.replyEmbeds(handle("/", event.getGuild() == null ? null : event.getGuild().getId())).queue();
     }
 
     @Override
     protected void executeCommand(CommandEvent event) {
-        event.getMessage().replyEmbeds(handle(PropertiesManager.getPrefix())).queue();
+        event.getMessage().replyEmbeds(handle(PropertiesManager.getPrefix(), event.getGuild() == null ? null : event.getGuild().getId())).queue();
     }
 
-    private MessageEmbed handle(String prefix) {
+    private MessageEmbed handle(String prefix, String guildId) {
         EmbedBuilder helpEmbed = new EmbedBuilder()
                 .setColor(BotColors.SUCCESS.getColor())
-                .setTitle("Geyser Bot Help");
+                .setTitle("OpenCollab Bot Help");
 
-        for (Command command : GeyserBot.COMMANDS.stream().sorted(Comparator.comparing(Command::getName)).collect(Collectors.toList())) {
+        List<SlashCommand> commands;
+
+        if (guildId == null) {
+            commands = GeyserBot.GLOBAL_SLASH_COMMANDS;
+        } else {
+            List<SlashCommand> newCommands = new ArrayList<>(GeyserBot.GLOBAL_SLASH_COMMANDS);
+            newCommands.addAll(GeyserBot.GUILD_SLASH_COMMANDS.getOrDefault(guildId, List.of()));
+            commands = newCommands;
+        }
+
+        for (SlashCommand command : commands.stream().sorted(Comparator.comparing(SlashCommand::getName)).collect(Collectors.toList())) {
             if (!command.isHidden()) {
                 helpEmbed.addField("`" + prefix + command.getName() + (command.getArguments() != null ? " " + command.getArguments() : "") + "`", command.getHelp(), true);
             }

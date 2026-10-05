@@ -25,58 +25,37 @@
 
 package org.geysermc.discordbot.util;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.Category;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
-import net.dv8tion.jda.api.utils.FileUpload;
-import org.apache.commons.io.FileUtils;
+import org.geysermc.discordbot.GeyserBot;
 import org.geysermc.discordbot.storage.ServerConfiguration;
+import org.geysermc.discordbot.storage.ServerModule;
+import org.geysermc.discordbot.util.ticket.GuildTicket;
+import org.geysermc.discordbot.util.ticket.GuildTickets;
 import org.geysermc.discordbot.util.ticket.TicketData;
 import org.geysermc.discordbot.util.ticket.TicketMetadata;
+import org.geysermc.discordbot.util.ticket.TicketState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-import static java.time.temporal.ChronoField.*;
 
 public class TicketHelper {
-    public static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
-            .parseCaseInsensitive()
-            .appendValue(DAY_OF_MONTH, 2)
-            .appendLiteral('/')
-            .appendValue(MONTH_OF_YEAR, 2)
-            .appendLiteral('/')
-            .appendValue(YEAR, 4)
-            .appendLiteral(' ')
-            .appendValue(HOUR_OF_DAY, 2)
-            .appendLiteral(':')
-            .appendValue(MINUTE_OF_HOUR, 2)
-            .appendLiteral(":")
-            .appendValue(SECOND_OF_MINUTE, 2)
-            .optionalStart()
-            .parseLenient()
-            .appendOffset("+HHMMss", "")
-            .parseStrict()
-            .toFormatter();
     private static final Logger log = LoggerFactory.getLogger(TicketHelper.class);
-    private static final Gson GSON = new GsonBuilder()
-            .setPrettyPrinting().create();
+
+    /**
+     * Base URL of the web panel page that lets staff view a ticket's permanent transcript.
+     */
+    private static final String TICKET_VIEW_URL = PropertiesManager.getPublicWebAddress();
 
     public static boolean isTicketChannel(GuildChannel c) {
         if (!(c instanceof TextChannel channel)) return false;
@@ -104,142 +83,91 @@ public class TicketHelper {
         return member.getUnsortedRoles().stream().anyMatch(validRoles::contains);
     }
 
+    /**
+     * Closes a ticket's channel. The ticket's metadata and transcript are kept in the database
+     * forever - only the Discord channel itself is removed. If an archive channel is configured,
+     * a link to the ticket's permanent web view is posted there instead of a file export.
+     */
     public static void closeTicket(GuildChannel channel, Member member) {
         if (!TicketHelper.isTicketChannel(channel)) return;
 
         TextChannel textChannel = (TextChannel) channel;
 
-        if (isLoggedTicket(textChannel)) {
-            User user = member.getUser();
-            logTicketAction(textChannel, "@%s (ID: %s) closed the ticket.".formatted(user.getName(), user.getId()));
-        }
-
-        if (!isLoggedTicket(textChannel)) {
-            log.info("Not a logged ticket. Unable to archive.");
-            channel.delete().queue();
-            return;
-        }
-
-        if (!ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(channel.getGuild())) {
-            log.info("Not ticket archiving, deleting channel but not ticket data.");
-            channel.delete().queue();
-            return;
-        }
-
-        TextChannel archiveChannel = ServerConfiguration.TICKET_ARCHIVE_CHANNEL.get(channel.getGuild());
-        if (archiveChannel == null) {
-            log.warn("No archive channel found. Not archiving.");
-            channel.delete().queue();
-            return;
-        }
-
         TicketMetadata metadata = getTicketMetadata(textChannel);
         if (metadata == null) {
-            log.error("Ticket is logged but no metadata is present.");
-            textChannel.sendMessage("Something went wrong while deleting ticket.").queue();
+            log.info("Ticket channel has no tracked metadata, deleting channel without archiving.");
+            channel.delete().queue();
             return;
         }
 
-        Path logDirectory = TicketHelper.getTicketDirectory(textChannel);
+        User user = member.getUser();
+        logTicketAction(metadata, "@%s (ID: %s) closed the ticket.".formatted(user.getName(), user.getId()));
 
-        ByteArrayOutputStream stream;
-        try {
-            stream = new ByteArrayOutputStream();
-            ZipOutputStream zipOut = new ZipOutputStream(stream);
-            Files.list(logDirectory).forEach(item -> {
-                try {
-                    FileInputStream fis = new FileInputStream(item.toFile());
-                    ZipEntry zipEntry = new ZipEntry(item.toFile().getName());
-                    zipOut.putNextEntry(zipEntry);
-                    byte[] bytes = new byte[1024];
-                    int length;
-                    while((length = fis.read(bytes)) >= 0) {
-                        zipOut.write(bytes, 0, length);
-                    }
-                    fis.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        metadata = metadata.withState(TicketState.CLOSED).withChannelId(null);
+        GeyserBot.storageManager.updateTicket(metadata);
 
-            zipOut.close();
-            stream.close();
-
-            FileUtils.deleteDirectory(logDirectory.toFile());
-        } catch (IOException e) {
-            StringWriter writer = new StringWriter();
-            PrintWriter printWriter = new PrintWriter(writer);
-            e.printStackTrace(printWriter);
-            textChannel.sendMessage(writer.toString()).queue();
-            e.printStackTrace();
-            return;
+        if (ServerConfiguration.TICKET_ARCHIVE_CHANNEL.isConfigured(channel.getGuild())) {
+            TextChannel archiveChannel = ServerConfiguration.TICKET_ARCHIVE_CHANNEL.get(channel.getGuild());
+            if (archiveChannel != null) {
+                String link = "%s/%s/tickets/%d".formatted(TICKET_VIEW_URL, metadata.guildId(), metadata.ticketId());
+                archiveChannel.sendMessage(
+                                "Ticket closed by %s.\nClient: <@&%s>\nType: %s\nView transcript: <%s>"
+                                        .formatted(member.getAsMention(), metadata.clientRoleId(), metadata.type().name(), link))
+                        .setAllowedMentions(List.of()).queue();
+            } else {
+                log.warn("No archive channel found. Not posting a transcript link.");
+            }
         }
-
-        archiveChannel.sendFiles(FileUpload.fromData(stream.toByteArray(),  "ticket_%s_%s.zip".formatted(metadata.clientId(), metadata.id())))
-                .setContent("Ticket closed by %s.\nClient: <@&%s>\nType: %s".formatted(member.getAsMention(), metadata.clientRoleId(), metadata.type().name()))
-                .setAllowedMentions(List.of()).queue(message -> {});
 
         channel.delete().queue();
     }
 
-    public static boolean isLoggedTicket(TextChannel channel) {
-        Path savePath = Path.of("tickets", channel.getId());
-        return Files.exists(savePath);
-    }
+    /**
+     * Creates a ticket, both persisting its metadata to the database and setting up its channel.
+     */
+    public static TicketMetadata initTicket(TextChannel channel, TicketData ticketData) {
+        channel.createWebhook("OC Bot Web Access").queue();
 
-    public static void initTicket(TextChannel channel, TicketData ticketData) {
-        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
-        try {
-            if (Files.notExists(savePath)) {
-                Files.createDirectories(savePath.getParent());
-                Files.createFile(savePath);
-            }
-
-            TicketMetadata metadata = ticketData.metadata();
-
-            Files.writeString(savePath, GSON.toJson(metadata));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        TicketMetadata metadata = ticketData.metadata(channel);
+        int ticketId = GeyserBot.storageManager.createTicket(metadata);
+        return metadata.withTicketId(ticketId);
     }
 
     public static TicketMetadata getTicketMetadata(TextChannel channel) {
-        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
-        if (Files.notExists(savePath)) return null;
+        return GeyserBot.storageManager.getTicketByChannel(channel.getIdLong());
+    }
+
+    public static void setTicketMetadata(TicketMetadata metadata) {
+        GeyserBot.storageManager.updateTicket(metadata);
+    }
+
+    public static void logTicketAction(TicketMetadata metadata, String line) {
+        GeyserBot.storageManager.addTicketLog(metadata.ticketId(), line);
+    }
+
+    /**
+     * Directory attachments downloaded from a ticket's messages are saved to. Keyed by the
+     * ticket's stable database ID rather than its (potentially now-deleted) channel ID. Created
+     * on demand if it doesn't already exist.
+     */
+    public static Path getTicketDirectory(int ticketId) {
+        Path directory = Path.of("tickets", String.valueOf(ticketId));
         try {
-            return GSON.fromJson(Files.newBufferedReader(savePath), TicketMetadata.class);
+            Files.createDirectories(directory);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        return directory;
     }
 
-    public static void setTicketMetadata(TextChannel channel, TicketMetadata metadata) {
-        Path savePath = Path.of("tickets", channel.getId(), "metadata.json");
-        if (Files.notExists(savePath)) return;
-        try {
-            Files.writeString(savePath, GSON.toJson(metadata));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    public static GuildTickets getTickets(Guild guild) {
+        if (!ServerModule.TICKETS.isEnabled(guild)) return GuildTickets.EMPTY;
 
-    public static void logTicketAction(TextChannel channel, String line) {
-        Path savePath = Path.of("tickets", channel.getId(), "log.txt");
-        try {
-            if (Files.notExists(savePath)) {
-                Files.createDirectories(savePath.getParent());
-                Files.createFile(savePath);
-            }
+        List<GuildTicket> tickets = GeyserBot.storageManager.getTickets(guild.getIdLong()).stream()
+                .map(GuildTicket::new)
+                .toList();
 
-            line = "[" + DATE_TIME_FORMATTER.format(LocalDateTime.now()) + "] " + line + "\n";
-
-            Files.writeString(savePath, line, StandardOpenOption.APPEND);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static Path getTicketDirectory(TextChannel channel) {
-        return Path.of("tickets", channel.getId());
+        return new GuildTickets(tickets);
     }
 }

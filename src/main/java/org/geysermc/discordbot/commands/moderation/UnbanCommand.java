@@ -150,6 +150,7 @@ public class UnbanCommand extends BotSlashCommand {
                             .build()).queue(message -> {}, throwable -> {}), throwable -> {});
         }
 
+        GeyserBot.storageManager.removeBan(user.getIdLong());
         return ModerationHelper.revokeBan(user.getIdLong(), mod.getUser(), reason);
     }
 }

@@ -136,13 +136,13 @@ public class QuarantineHandler extends Handler {
                 int days = actionId.equals("compromised") ? 1 : 0;
 
                 member.removeTimeout().queue(v -> {
-                    event.replyEmbeds(ModerationHelper.banUser(member, event.getMember(), event.getGuild(), days, false, reason, event.getChannel())).queue();
+                    event.replyEmbeds(ModerationHelper.banUser(member, event.getMember(), event.getGuild(), 1, days, false, reason, event.getChannel())).queue();
                 }, throwable -> {
-                    event.replyEmbeds(ModerationHelper.banUser(member, event.getMember(), event.getGuild(), days, false, reason, event.getChannel())).queue();
+                    event.replyEmbeds(ModerationHelper.banUser(member, event.getMember(), event.getGuild(), 1, days, false, reason, event.getChannel())).queue();
                     event.replyEmbeds(
                             new EmbedBuilder()
                                     .setTitle("Error")
-                                    .setDescription("Issue when kicking " + member.getAsMention() + ", couldn't remove timeout.")
+                                    .setDescription("Issue when banning " + member.getAsMention() + ", couldn't remove timeout.")
                                     .build()
                     ).queue();
                 });

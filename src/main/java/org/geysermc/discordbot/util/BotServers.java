@@ -38,7 +38,9 @@ public enum BotServers {
     OPEN_COLLAB_MEMBERS("1503784549354569880", true),
     GEYSER("613163671870242838", false),
     CLOUDBURST("393465748535640064", false),
-    BOAR("1504901803236659351", false);
+    BOAR("1504901803236659351", false),
+    OC_BOT_TESTING("1529391944730415164", false),
+    BOTA("1311380978161156227", true);
 
     private final String serverId;
     private final boolean hiddenUnlessMember;
@@ -52,13 +54,6 @@ public enum BotServers {
         return serverId;
     }
 
-    public boolean isHidden(JDA jda, User user) {
-        Guild server = jda.getGuildById(serverId);
-        if (server == null) return false;
-
-        return !hiddenUnlessMember || (user != null && server.isMember(user));
-    }
-
     public Guild get(JDA jda) {
         return jda.getGuildById(serverId);
     }
@@ -69,7 +64,9 @@ public enum BotServers {
         for (BotServers server : values()) {
             if (!server.serverId.equals(guild.getId())) continue;
 
-            return server.isHidden(guild.getJDA(), user);
+            if (!server.hiddenUnlessMember) return false;
+
+            return user == null || !guild.isMember(user);
         }
 
         return false;

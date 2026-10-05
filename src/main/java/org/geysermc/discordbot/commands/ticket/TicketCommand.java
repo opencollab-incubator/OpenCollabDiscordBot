@@ -240,7 +240,7 @@ public class TicketCommand extends BotSlashCommand {
             }
             TicketType currentType = metadata.type();
             metadata = metadata.withTicketType(event.optString("type"));
-            TicketHelper.setTicketMetadata(event.getTextChannel(), metadata);
+            TicketHelper.setTicketMetadata(metadata);
 
             event.getTextChannel().getManager().setName(metadata.getChannelName()).queue();
 
@@ -253,7 +253,7 @@ public class TicketCommand extends BotSlashCommand {
                     .append(" to ")
                     .append(metadata.type().name());
 
-            TicketHelper.logTicketAction(event.getTextChannel(), logLine.toString());
+            TicketHelper.logTicketAction(metadata, logLine.toString());
 
             event.reply("Changed ticket type.").setEphemeral(true).queue();
         }

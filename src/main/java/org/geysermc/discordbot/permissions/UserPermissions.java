@@ -29,9 +29,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public enum UserPermissions {
-    VIEW_ALL_APPEALS,
-    MANAGE_ALL_APPEALS,
-    CONFIGURE_ALL_SERVERS;
+    VIEW_APPEALS,
+    MANAGE_APPEALS,
+    CONFIGURE_ALL_SERVERS,
+    MANAGE_ALL_PERMISSIONS,
+    MANAGE_USER_RANKS;
 
     public static int getRawValue(UserPermissions... permissions) {
         int perms = 0;

@@ -26,7 +26,10 @@
 package org.geysermc.discordbot.util.ticket;
 
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.geysermc.discordbot.GeyserBot;
+
+import java.time.Instant;
 
 public record TicketData(Role clientRole, String clientId, int id, TicketType type) {
 
@@ -43,7 +46,18 @@ public record TicketData(Role clientRole, String clientId, int id, TicketType ty
         return prefix + clientId + "-" + id;
     }
 
-    public TicketMetadata metadata() {
-        return new TicketMetadata(String.valueOf(id), clientId, clientRole.getName(), clientRole.getId(), type);
+    public TicketMetadata metadata(TextChannel channel) {
+        return new TicketMetadata(
+                0,
+                clientRole.getGuild().getIdLong(),
+                channel.getIdLong(),
+                Instant.now(),
+                String.valueOf(id),
+                clientId,
+                clientRole.getName(),
+                clientRole.getId(),
+                type,
+                TicketState.OPEN
+        );
     }
 }

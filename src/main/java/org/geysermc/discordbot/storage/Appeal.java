@@ -25,14 +25,30 @@
 
 package org.geysermc.discordbot.storage;
 
-import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.UserSnowflake;
 
 import java.time.Instant;
 
-public record Appeal(Instant creationTime, Guild appealingFrom, String message, State state) {
+public record Appeal(int id, UserSnowflake user, Instant creationTime, Instant actionTime, String message, State state) {
     public enum State {
-        PENDING,
-        APPROVED,
-        DENIED
+        PENDING("Pending Appeal", "clock"),
+        APPROVED("Approved Appeal", "check"),
+        DENIED("Denied Appeal", "ban");
+
+        private final String title;
+        private final String icon;
+
+        State(String title, String icon) {
+            this.title = title;
+            this.icon = icon;
+        }
+
+        public String title() {
+            return title;
+        }
+
+        public String icon() {
+            return icon;
+        }
     }
 }

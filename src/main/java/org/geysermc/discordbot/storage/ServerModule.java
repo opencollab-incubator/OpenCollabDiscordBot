@@ -41,20 +41,22 @@ public class ServerModule {
         return REGISTERED_MODULES.get(key);
     }
 
-    public static final ServerModule BUTTON_ROLES = register("oc_bot:button_roles", "Button Roles");
-    public static final ServerModule EXPLOIT_REPORT = register("oc_bot:exploit_report", "Exploit Reports");
-    public static final ServerModule FORUMS = register("oc_bot:forums", "Forums");
-    public static final ServerModule GEYSER_DUMPS = register("oc_bot:geyser_dumps", "Geyser Dump Checking");
-    public static final ServerModule LEVELS = register("oc_bot:levels", "Leveling System");
-    public static final ServerModule PREVIEWS = register("oc_bot:previews", "Previews");
-    public static final ServerModule TICKETS = register("oc_bot:tickets", "Tickets");
+    public static final ServerModule BUTTON_ROLES = register("oc_bot:button_roles", "Button Roles", false);
+    public static final ServerModule EXPLOIT_REPORT = register("oc_bot:exploit_report", "Exploit Reports", false);
+    public static final ServerModule FORUMS = register("oc_bot:forums", "Forums", false);
+    public static final ServerModule GEYSER_DUMPS = register("oc_bot:geyser_dumps", "Geyser Dump Checking", true);
+    public static final ServerModule LEVELS = register("oc_bot:levels", "Leveling System", false);
+    public static final ServerModule PREVIEWS = register("oc_bot:previews", "Previews", false);
+    public static final ServerModule TICKETS = register("oc_bot:tickets", "Tickets", false);
 
     private final String key;
     private final String name;
+    private final boolean enabledInDMs;
 
-    public ServerModule(String key, String name) {
+    public ServerModule(String key, String name, boolean enabledInDMs) {
         this.key = key;
         this.name = name;
+        this.enabledInDMs = enabledInDMs;
     }
 
     public String getKey() {
@@ -73,7 +75,7 @@ public class ServerModule {
     }
 
     public boolean isEnabled(Guild guild) {
-        if (guild == null) return true; // Enabled in DMs by default
+        if (guild == null) return this.enabledInDMs;
         return getEnabledModules(guild).contains(this);
     }
 
@@ -94,8 +96,8 @@ public class ServerModule {
         return true;
     }
 
-    private static ServerModule register(String key, String name) {
-        ServerModule module = new ServerModule(key, name);
+    private static ServerModule register(String key, String name, boolean enabledInDMs) {
+        ServerModule module = new ServerModule(key, name, enabledInDMs);
         REGISTERED_MODULES.put(key, module);
         return module;
     }

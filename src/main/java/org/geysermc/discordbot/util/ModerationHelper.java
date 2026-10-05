@@ -111,19 +111,7 @@ public class ModerationHelper {
                                     .setColor(BotColors.FAILURE.getColor())
                                     .build())
                             .build()
-            ).queue(message -> {
-                if (referenceMessage != null) {
-                    referenceMessage.forwardTo(message.getChannel()).queue(msg -> {
-                        if (deleteReferenceMessage) {
-                            referenceMessage.delete().queue(v -> {}, throwable -> {});
-                        }
-                    }, throwable -> {
-                        if (deleteReferenceMessage) {
-                            referenceMessage.delete().queue(v -> {}, throwable2 -> {});
-                        }
-                    });
-                }
-            });
+            );
 
             // Now log it!
             int id = GeyserBot.storageManager.addLog(staffMember, "quarantine", user, reason);
